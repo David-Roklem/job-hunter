@@ -24,24 +24,16 @@ export type ListOptions = { limit?: number; offset?: number };
 
 // ---------------------------------------------------------------------------
 // Zod-схемы для JSON-полей (валидируются на границе репозитория).
+// Добавляются по мере появления репозиториев для соответствующих таблиц —
+// speculative-схемы (skills/experience/job payload) намеренно НЕ объявлены:
+// их форма прояснится при написании resume_templates/jobs репозиториев.
 // ---------------------------------------------------------------------------
 
-/** Строковый массив навыков. */
-export const skillsSchema = z.array(z.string());
-
-/** Произвольный объект конфигурации источника. */
+/** Конфиг источника: произвольный объект ({ url?, channel?, filters?, ... }). */
 export const sourceConfigSchema = z.record(z.string(), z.unknown());
 
-/** Произвольный объект опыта работы в резюме. */
-export const experienceSchema = z.record(z.string(), z.unknown());
-
-/** Произвольный payload задачи очереди. */
-export const jobPayloadSchema = z.record(z.string(), z.unknown());
-
-/** Произвольный результат задачи. */
-export const jobResultSchema = z.record(z.string(), z.unknown());
-
-// Re-export enum-значений как zod-enum для удобства валидации входов.
+// Re-export enum-значений как zod-enum (полный набор под все enum-колонки схемы —
+// для консистентности, даже если репозиторий для таблицы ещё не написан).
 export const sourceKindSchema = z.enum(sourceKinds);
 export const vacancyStatusSchema = z.enum(vacancyStatuses);
 export const employmentTypeSchema = z.enum(employmentTypes);
@@ -59,7 +51,24 @@ export function toJson<T>(value: T): string {
   return JSON.stringify(value);
 }
 
-/** Парсит JSON-колонку с zod-валидацией. Бросает ZodError при невалидных данных. */
+/**
+ * Парсит JSON-колонку с zod-валидацией.
+ *
+ * Бросает Error с понятным сообщением при повреждённом JSON (SyntaxError
+ * от JSON.parse оборачивается) и ZodError при невалидной форме данных.
+ * Коррупция text-колонки — реалистичный сценарий (ручная правка, миграция,
+ * частичная запись), поэтому ошибка должна быть информативной, а не
+ * «Unexpected token in JSON».
+ */
 export function fromJson<T>(raw: string, schema: z.ZodType<T>): T {
-  return schema.parse(JSON.parse(raw));
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (cause) {
+    throw new Error(
+      `fromJson: повреждённый JSON в колонке (длина=${raw.length}, префикс=${JSON.stringify(raw.slice(0, 40))})`,
+      { cause },
+    );
+  }
+  return schema.parse(parsed);
 }
