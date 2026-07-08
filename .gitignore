@@ -25,6 +25,9 @@ node_modules
 *.log
 npm-debug.log*
 
+# Soly iteration checkpoints (local)
+.agents/iterations/
+
 # OS
 .DS_Store
 Thumbs.db
