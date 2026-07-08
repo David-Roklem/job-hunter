@@ -24,8 +24,10 @@ export type CreateSourceInput = {
   config: Record<string, unknown>;
 };
 
-/** Сериализованная форма Source для API/UI (config распарсен). */
-export type SourceDTO = Omit<Source, "config_json"> & { config: unknown };
+/** DTO с распарсенным config (вместо непрозрачной строки config_json). */
+export type SourceDTO = Omit<Source, "config_json"> & {
+  config: Record<string, unknown>;
+};
 
 function toDTO(row: Source): SourceDTO {
   const { config_json, ...rest } = row;
@@ -36,11 +38,17 @@ function toDTO(row: Source): SourceDTO {
 export function create(input: CreateSourceInput): Source {
   sourceKindSchema.parse(input.kind);
   const config_json = toJson(sourceConfigSchema.parse(input.config));
-  return db
+  const row = db
     .insert(sources)
     .values({ kind: input.kind, name: input.name, config_json })
     .returning()
-    .get()!;
+    .get();
+  if (!row) {
+    throw new Error(
+      `source insert returned no row (name=${JSON.stringify(input.name)})`,
+    );
+  }
+  return row;
 }
 
 /** Найти источник по id. */

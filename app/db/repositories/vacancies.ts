@@ -10,10 +10,12 @@
  * Прямые db.select/db.insert/db.update — синхронные (.get()/.all()).
  */
 import { and, eq } from "drizzle-orm";
+import { z } from "zod";
 import { db } from "~/db";
 import { companies, sources, vacancies, type EmploymentType } from "~/db/schema";
 import {
   employmentTypeSchema,
+  fromJson,
   toJson,
   vacancyStatusSchema,
   type ListOptions,
@@ -21,6 +23,18 @@ import {
 
 export type Vacancy = typeof vacancies.$inferSelect;
 export type NewVacancy = typeof vacancies.$inferInsert;
+
+/** Zod-схема для raw_json вакансии (сырой ответ источника). */
+const rawSchema = z.record(z.string(), z.unknown());
+
+/** DTO с распарсенным raw (вместо непрозрачной строки raw_json). */
+export type VacancyDTO = Omit<Vacancy, "raw_json"> & { raw: Record<string, unknown> };
+
+/** Преобразовать строку raw_json в объект с zod-валидацией. */
+function toDTO<T extends Vacancy>(row: T): Omit<T, "raw_json"> & { raw: Record<string, unknown> } {
+  const { raw_json, ...rest } = row;
+  return { ...rest, raw: fromJson(raw_json, rawSchema) };
+}
 
 /** Вход создания вакансии (с zod-валидацией границе). */
 export type CreateVacancyInput = {
@@ -39,15 +53,16 @@ export type CreateVacancyInput = {
   collected_at: Date;
 };
 
-/** Найти вакансию по id (с relation'ами source + company). */
+/** Найти вакансию по id (с relation'ами source + company). raw_json распарсен в raw. */
 export async function findById(id: number) {
-  return db.query.vacancies.findFirst({
+  const row = await db.query.vacancies.findFirst({
     where: eq(vacancies.id, id),
     with: {
       source: true,
       company: true,
     },
   });
+  return row ? toDTO(row) : undefined;
 }
 
 /**
@@ -100,11 +115,20 @@ export function create(input: CreateVacancyInput): Vacancy {
     .returning()
     .get();
 
-  // onConflictDoNothing возвращает undefined при конфликте — берём существующую.
-  return inserted ?? findByExternalId(input.source_id, input.external_id)!;
+  // onConflictDoNothing возвращает undefined при конфликте UNIQUE(source_id, external_id).
+  // В этом случае берём существующую строку. Если её нет (собственно конфликт без
+  // строки — гонка удаления), бросаем понятную ошибку вместо падения с `!`.
+  if (inserted) return inserted;
+  const existing = findByExternalId(input.source_id, input.external_id);
+  if (!existing) {
+    throw new Error(
+      `vacancy insert returned no row and no existing (source_id=${input.source_id}, external_id=${JSON.stringify(input.external_id)}) — возможна гонка удаления`,
+    );
+  }
+  return existing;
 }
 
-/** Список вакансий (с пагинацией, опционально по статусу). С relations. */
+/** Список вакансий (с пагинацией, опционально по статусу). С relations, raw распарсен. */
 export async function list(
   opts: ListOptions & { status?: Vacancy["status"] } = {},
 ) {
@@ -114,7 +138,7 @@ export async function list(
     offset: opts.offset,
     with: { source: true, company: true },
   });
-  return rows;
+  return rows.map(toDTO);
 }
 
 /** Обновить поля вакансии (включая status). */

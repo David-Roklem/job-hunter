@@ -57,9 +57,9 @@ export function findByVacancyAndResume(
     .get();
 }
 
-/** Создать отклик. */
+/** Создать отклик. Бросает при нарушении UNIQUE(vacancy_id, resume_template_id) или FK. */
 export function create(input: CreateApplicationInput): Application {
-  return db
+  const row = db
     .insert(applications)
     .values({
       vacancy_id: input.vacancy_id,
@@ -68,7 +68,13 @@ export function create(input: CreateApplicationInput): Application {
       status: input.status ?? "draft",
     })
     .returning()
-    .get()!;
+    .get();
+  if (!row) {
+    throw new Error(
+      `application insert returned no row (vacancy_id=${input.vacancy_id}, resume_template_id=${input.resume_template_id})`,
+    );
+  }
+  return row;
 }
 
 /** Список откликов (с пагинацией, опционально по статусу). С relations. */

@@ -18,17 +18,9 @@ import {
 /** Опциональные параметры листинга: лимит/оффсет. */
 export type ListOptions = { limit?: number; offset?: number };
 
-/** Утилита: применяет limit/offset к списку значений (в памяти). */
-export function applyPagination<T>(
-  rows: T[],
-  opts: ListOptions = {},
-): T[] {
-  const { limit, offset } = opts;
-  let result = rows;
-  if (offset !== undefined && offset > 0) result = result.slice(offset);
-  if (limit !== undefined && limit > 0) result = result.slice(0, limit);
-  return result;
-}
+// Пагинация применяется inline в каждом репозитории (Drizzle SQLite sync API
+// не даёт единого .limit()/.offset() для select().all(); для db.query.*
+// limit/offset передаются напрямую в findMany).
 
 // ---------------------------------------------------------------------------
 // Zod-схемы для JSON-полей (валидируются на границе репозитория).
