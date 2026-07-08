@@ -1,0 +1,30 @@
+# Dependencies
+node_modules
+
+# Build output
+/build
+/.cache
+
+# React Router generated types
+/.react-router
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# SQLite database & journals
+/data/*.sqlite
+/data/*.sqlite-journal
+/data/*.sqlite-wal
+/data/*.sqlite-shm
+*.sqlite
+*.sqlite-journal
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
