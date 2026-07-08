@@ -1,14 +1,16 @@
 import { existsSync, mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import { drizzle } from "drizzle-orm/node-sqlite";
+import Database from "better-sqlite3";
+import { drizzle } from "drizzle-orm/better-sqlite3";
+import { schema } from "~/db/schema";
 import { env } from "~/env.server";
 
 /**
  * ЕДИНСТВЕННОЕ место открытия SQLite-соединения.
  *
  * Feature-код НЕ открывает соединения напрямую — только импортирует `db`
- * отсюда (правило проекта + must_have из PLAN.md). Используется встроенный
- * `node:sqlite` (доступен в Node ≥ 22, стабилен в 24) через Drizzle ORM.
+ * отсюда (правило проекта + must_have из PLAN.md). Драйвер — better-sqlite3
+ * (нативный, стабилен на Windows; поддерживает и рантайм, и drizzle-kit migrate).
  */
 
 const dbPath = resolve(env.DATABASE_URL);
@@ -17,7 +19,7 @@ if (!existsSync(dir)) {
   mkdirSync(dir, { recursive: true });
 }
 
-/** Drizzle-соединение. Схема пока пустая — расширится в фазе 2. */
-export const db = drizzle({ connection: { source: dbPath } });
+/** Drizzle-соединение со схемой (relations доступны через with: {...}). */
+export const db = drizzle(new Database(dbPath), { schema });
 
 export { dbPath };
