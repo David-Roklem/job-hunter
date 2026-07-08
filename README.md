@@ -5,12 +5,12 @@
 с несколькими версиями резюме, готовит черновики откликов и сопроводительных
 писем через Yandex GPT — человек только подтверждает.
 
-> **Статус:** bootstrap-скелет. Полная функциональность добавляется в следующих фазах.
+> **Статус:** bootstrap + data-модель. Сбор источников, matcher, AI-генерация — в следующих фазах.
 
 ## Стек
 
 - **React Router v7** (framework mode) + Vite + TypeScript strict
-- **SQLite** через встроенный `node:sqlite` (Node ≥ 22) + **Drizzle ORM**
+- **SQLite** через **better-sqlite3** + **Drizzle ORM** (реляционный query API, миграции)
 - **Zod** для валидации окружения
 - **Vitest** + Testing Library для тестов
 
@@ -60,8 +60,14 @@ app/
 ├── routes/
 │   └── _index.tsx    # дашборд `/` — loader возвращает { status, version }
 └── db/
-    ├── index.ts      # единственное место открытия SQLite-соединения
-    └── schema.ts     # Drizzle-схема (минимальная — расширится в фазе 2)
+    ├── index.ts      # единственное место открытия SQLite-соединения (better-sqlite3)
+    ├── schema.ts     # Drizzle-схема: 9 таблиц (sources, vacancies, applications, ...)
+    └── repositories/ # тонкий CRUD без бизнес-логики
+        ├── _shared.ts       # типы, zod-схемы JSON-полей, toJson/fromJson
+        ├── sources.ts       # CRUD источников вакансий
+        ├── vacancies.ts     # CRUD вакансий (дедупликация UNIQUE source+external)
+        ├── applications.ts  # CRUD откликов
+        └── index.ts         # barrel-export
 tests/
 └── smoke.test.tsx    # smoke-тест: заголовок + loader contract
 ```
@@ -70,7 +76,7 @@ tests/
 
 - Маршруты — файлы в `app/routes/`, co-located loader/action, типизация через `Route.LoaderArgs`.
 - Конфиг читается только из `app/env.server.ts`, не из `process.env` напрямую.
-- SQLite-соединение открывается только в `app/db/index.ts`.
+- SQLite-соединение открывается только в `app/db/index.ts`; feature-код обращается к данным через `app/db/repositories/`.
 - `strict: true`, `noUncheckedIndexedAccess`, без `any`.
 
 См. `.agents/` (ROADMAP, STATE, intent-документы) для контекста проекта.

@@ -28,6 +28,9 @@ npm-debug.log*
 # Soly iteration checkpoints (local)
 .agents/iterations/
 
+# pi local todos (session-local)
+.pi/todos/
+
 # OS
 .DS_Store
 Thumbs.db
