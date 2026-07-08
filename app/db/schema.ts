@@ -13,7 +13,7 @@
  *
  * Доступ к БД — только через app/db/index.ts (must_have фазы 1).
  */
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   integer,
   primaryKey,
@@ -27,17 +27,27 @@ import {
 // Timestamps-хелпер — переиспользуемые created_at / updated_at.
 //
 // SQLite хранит UNIX-секунды. Drizzle mode: "timestamp" конвертирует в Date.
-// default — sql-выражение unixepoch(), обновление — JS-функцией (надёжнее,
-// чем SQL, т.к. $onUpdate отрабатывает на каждом update в Drizzle).
+// SQL DEFAULT (unixepoch()) даёт корректное значение при ЛЮБОМ insert
+// (вкл. сырой SQL / drizzle-kit seed); $defaultFn/$onUpdateFn дублируют
+// это на уровне Drizzle query builder.
 // ---------------------------------------------------------------------------
 
-/** Общие таймстемпы. Спредить в определение каждой таблицы. */
+/**
+ * Общие таймстемпы. Спредить в определение каждой таблицы.
+ *
+ * Двойная защита: SQL DEFAULT (unixepoch()) срабатывает на любом INSERT
+ * (включая сырой SQL, drizzle-kit seed, ручные правки), а $defaultFn/
+ * $onUpdateFn — на уровне Drizzle query builder. mode: "timestamp" конвертирует
+ * UNIX-секунды ↔ Date.
+ */
 const timestamps = {
   created_at: integer("created_at", { mode: "timestamp" })
     .notNull()
+    .default(sql`(unixepoch())`)
     .$defaultFn(() => new Date()),
   updated_at: integer("updated_at", { mode: "timestamp" })
     .notNull()
+    .default(sql`(unixepoch())`)
     .$defaultFn(() => new Date())
     .$onUpdateFn(() => new Date()),
 } as const;

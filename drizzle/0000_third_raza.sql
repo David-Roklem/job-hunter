@@ -5,8 +5,8 @@ CREATE TABLE `applications` (
 	`match_score` integer,
 	`status` text DEFAULT 'draft' NOT NULL,
 	`submitted_at` integer,
-	`created_at` integer NOT NULL,
-	`updated_at` integer NOT NULL,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
+	`updated_at` integer DEFAULT (unixepoch()) NOT NULL,
 	FOREIGN KEY (`vacancy_id`) REFERENCES `vacancies`(`id`) ON UPDATE no action ON DELETE cascade,
 	FOREIGN KEY (`resume_template_id`) REFERENCES `resume_templates`(`id`) ON UPDATE no action ON DELETE cascade
 );
@@ -17,8 +17,8 @@ CREATE TABLE `companies` (
 	`name` text NOT NULL,
 	`website_url` text,
 	`hh_id` text,
-	`created_at` integer NOT NULL,
-	`updated_at` integer NOT NULL
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
+	`updated_at` integer DEFAULT (unixepoch()) NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE `cover_letters` (
@@ -29,8 +29,8 @@ CREATE TABLE `cover_letters` (
 	`model` text,
 	`generated_at` integer NOT NULL,
 	`edited_at` integer,
-	`created_at` integer NOT NULL,
-	`updated_at` integer NOT NULL,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
+	`updated_at` integer DEFAULT (unixepoch()) NOT NULL,
 	FOREIGN KEY (`application_id`) REFERENCES `applications`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
@@ -47,8 +47,8 @@ CREATE TABLE `jobs` (
 	`error` text,
 	`result_json` text,
 	`finished_at` integer,
-	`created_at` integer NOT NULL,
-	`updated_at` integer NOT NULL
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
+	`updated_at` integer DEFAULT (unixepoch()) NOT NULL
 );
 --> statement-breakpoint
 CREATE INDEX `jobs_status_run_after_idx` ON `jobs` (`status`,`run_after`);--> statement-breakpoint
@@ -61,8 +61,8 @@ CREATE TABLE `resume_templates` (
 	`experience_json` text NOT NULL,
 	`content_md` text NOT NULL,
 	`is_active` integer DEFAULT true NOT NULL,
-	`created_at` integer NOT NULL,
-	`updated_at` integer NOT NULL
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
+	`updated_at` integer DEFAULT (unixepoch()) NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE `sources` (
@@ -70,15 +70,15 @@ CREATE TABLE `sources` (
 	`kind` text NOT NULL,
 	`name` text NOT NULL,
 	`config_json` text NOT NULL,
-	`created_at` integer NOT NULL,
-	`updated_at` integer NOT NULL
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
+	`updated_at` integer DEFAULT (unixepoch()) NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE `tags` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`name` text NOT NULL,
 	`color` text,
-	`created_at` integer NOT NULL
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `tags_name_unique` ON `tags` (`name`);--> statement-breakpoint
@@ -98,8 +98,8 @@ CREATE TABLE `vacancies` (
 	`raw_json` text NOT NULL,
 	`status` text DEFAULT 'new' NOT NULL,
 	`collected_at` integer NOT NULL,
-	`created_at` integer NOT NULL,
-	`updated_at` integer NOT NULL,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
+	`updated_at` integer DEFAULT (unixepoch()) NOT NULL,
 	FOREIGN KEY (`source_id`) REFERENCES `sources`(`id`) ON UPDATE no action ON DELETE cascade,
 	FOREIGN KEY (`company_id`) REFERENCES `companies`(`id`) ON UPDATE no action ON DELETE set null
 );

@@ -10,7 +10,7 @@ key-files:
     - app/db/repositories/vacancies.ts
     - app/db/repositories/applications.ts
     - app/db/repositories/index.ts
-    - drizzle/0000_aberrant_hellcat.sql
+    - drizzle/0000_third_raza.sql
     - drizzle/meta/*
   modified:
     - app/db/schema.ts
@@ -36,7 +36,7 @@ relations-query API.
 ## Tasks
 - Task 1: Написать `app/db/schema.ts` — 9 таблиц + relations + timestamps-хелпер
 - Task 2: Подключить схему в `app/db/index.ts` (drizzle({ schema }))
-- Task 3: Сгенерировать SQL-миграцию `drizzle/0000_aberrant_hellcat.sql`
+- Task 3: Сгенерировать SQL-миграцию `drizzle/0000_third_raza.sql`
 - Task 4: Применить миграцию + верифицировать таблицы (9 + drizzle_meta)
 - Task 5: Тонкие репозитории (vacancies, sources, applications, _shared, index)
 - Task 6: Финальная верификация acceptance criteria (typecheck/test/build/idempotent)
