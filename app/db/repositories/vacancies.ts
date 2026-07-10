@@ -141,7 +141,7 @@ export async function list(
   return rows.map(toDTO);
 }
 
-/** Обновить поля вакансии (включая status). */
+/** Обновить поля вакансии (включая status). Пустой patch — no-op. */
 export function update(
   id: number,
   patch: Partial<{
@@ -154,6 +154,9 @@ export function update(
   const values: Partial<NewVacancy> = { ...patch };
   if (patch.status !== undefined) {
     values.status = vacancyStatusSchema.parse(patch.status);
+  }
+  if (Object.keys(values).length === 0) {
+    return db.select().from(vacancies).where(eq(vacancies.id, id)).get();
   }
   return db
     .update(vacancies)

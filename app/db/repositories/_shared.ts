@@ -18,9 +18,9 @@ import {
 /** Опциональные параметры листинга: лимит/оффсет. */
 export type ListOptions = { limit?: number; offset?: number };
 
-// Пагинация применяется inline в каждом репозитории (Drizzle SQLite sync API
-// не даёт единого .limit()/.offset() для select().all(); для db.query.*
-// limit/offset передаются напрямую в findMany).
+// Пагинация: все три репозитория передают limit/offset в Drizzle напрямую
+// (sources — через db.select().limit().offset(); vacancies/applications —
+// через db.query.*.findMany({ limit, offset })). undefined = без лимита.
 
 // ---------------------------------------------------------------------------
 // Zod-схемы для JSON-полей (валидируются на границе репозитория).

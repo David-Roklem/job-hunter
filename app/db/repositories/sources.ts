@@ -57,19 +57,18 @@ export function findById(id: number): SourceDTO | undefined {
   return row ? toDTO(row) : undefined;
 }
 
-/** Список источников (с пагинацией). */
+/** Список источников (с нативной пагинацией Drizzle, как в остальных репо). */
 export function list(opts: ListOptions = {}): SourceDTO[] {
-  const rows = db.select().from(sources).all();
-  // Drizzle SQLite sync API не поддерживает limit/offset напрямую на select().all(),
-  // но поддерживает через prepare — для тонкого репозитория проще применить в памяти.
-  const { limit, offset } = opts;
-  let result = rows;
-  if (offset !== undefined && offset > 0) result = result.slice(offset);
-  if (limit !== undefined && limit > 0) result = result.slice(0, limit);
-  return result.map(toDTO);
+  const rows = db
+    .select()
+    .from(sources)
+    .limit(opts.limit)
+    .offset(opts.offset)
+    .all();
+  return rows.map(toDTO);
 }
 
-/** Обновить поля источника. */
+/** Обновить поля источника. Пустой patch — no-op (возвращает текущую строку). */
 export function update(
   id: number,
   patch: Partial<Pick<Source, "name">> & {
@@ -82,6 +81,9 @@ export function update(
   if (patch.kind !== undefined) values.kind = sourceKindSchema.parse(patch.kind);
   if (patch.config !== undefined) {
     values.config_json = toJson(sourceConfigSchema.parse(patch.config));
+  }
+  if (Object.keys(values).length === 0) {
+    return db.select().from(sources).where(eq(sources.id, id)).get();
   }
   return db
     .update(sources)

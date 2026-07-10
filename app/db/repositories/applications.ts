@@ -93,7 +93,7 @@ export async function list(
   return rows;
 }
 
-/** Обновить поля отклика (статус, скор, дата отправки). */
+/** Обновить поля отклика (статус, скор, дата отправки). Пустой patch — no-op. */
 export function update(
   id: number,
   patch: Partial<{
@@ -105,6 +105,9 @@ export function update(
   const values: Partial<NewApplication> = { ...patch };
   if (patch.status !== undefined) {
     values.status = applicationStatusSchema.parse(patch.status);
+  }
+  if (Object.keys(values).length === 0) {
+    return db.select().from(applications).where(eq(applications.id, id)).get();
   }
   return db
     .update(applications)
