@@ -25,8 +25,9 @@ node_modules
 *.log
 npm-debug.log*
 
-# Soly iteration checkpoints (local)
+# Soly iteration checkpoints & rule-mtime cache (local)
 .agents/iterations/
+.agents/rule-mtimes.json
 
 # pi local todos (session-local)
 .pi/todos/
