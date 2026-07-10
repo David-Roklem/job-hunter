@@ -24,13 +24,37 @@ export type ListOptions = { limit?: number; offset?: number };
 
 // ---------------------------------------------------------------------------
 // Zod-схемы для JSON-полей (валидируются на границе репозитория).
-// Добавляются по мере появления репозиториев для соответствующих таблиц —
-// speculative-схемы (skills/experience/job payload) намеренно НЕ объявлены:
-// их форма прояснится при написании resume_templates/jobs репозиториев.
+// skills/experience объявлены под resume_templates; payload_json для jobs
+// намеренно НЕ сейчас — его форма прояснится в фазе scheduler (12).
 // ---------------------------------------------------------------------------
 
 /** Конфиг источника: произвольный объект ({ url?, channel?, filters?, ... }). */
 export const sourceConfigSchema = z.record(z.string(), z.unknown());
+
+// ---------------------------------------------------------------------------
+// resume_templates: навыки + опыт (строгая форма под matcher 08 / draft 09).
+// ---------------------------------------------------------------------------
+
+/** Навыки шаблона резюме — массив строк. */
+export const skillsSchema = z.array(z.string());
+
+/**
+ * Один пункт опыта работы в шаблоне резюме.
+ * period.to === null — «по настоящее время».
+ */
+export const experienceItemSchema = z.object({
+  company: z.string(),
+  role: z.string(),
+  period: z.object({
+    from: z.string(), // "2022-01"
+    to: z.string().nullable(), // null = «по настоящее время»
+  }),
+  description: z.string(),
+});
+
+/** Опыт работы в шаблоне резюме — массив пунктов. */
+export const experienceSchema = z.array(experienceItemSchema);
+export type ExperienceItem = z.infer<typeof experienceItemSchema>;
 
 // Re-export enum-значений как zod-enum (полный набор под все enum-колонки схемы —
 // для консистентности, даже если репозиторий для таблицы ещё не написан).
