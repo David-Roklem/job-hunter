@@ -90,12 +90,15 @@ export function findById(id: number): ResumeTemplateDTO | undefined {
  * Сортировка updated_at desc — недавно изменённые сверху (удобно для UI списка).
  */
 export function list(opts: ListOptions = {}): ResumeTemplateDTO[] {
+  // Drizzle типизирует limit/offset как number|Placeholder и не принимает
+  // undefined в сигнатуре, но в runtime пропускает (без лимита). Приведение
+  // сохраняет единый chain; поведение проверено (см. репо sources.ts).
   const rows = db
     .select()
     .from(resume_templates)
     .orderBy(desc(resume_templates.updated_at))
-    .limit(opts.limit)
-    .offset(opts.offset)
+    .limit(opts.limit as number)
+    .offset(opts.offset as number)
     .all();
   return rows.map(toDTO);
 }

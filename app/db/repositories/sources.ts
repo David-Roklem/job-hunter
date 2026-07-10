@@ -59,11 +59,14 @@ export function findById(id: number): SourceDTO | undefined {
 
 /** Список источников (с нативной пагинацией Drizzle, как в остальных репо). */
 export function list(opts: ListOptions = {}): SourceDTO[] {
+  // Drizzle типизирует limit/offset как number|Placeholder и не принимает undefined
+  // в сигнатуре, но в runtime пропускает undefined (без лимита). Передаём через
+  // приведение, чтобы сохранить единый chain и типобезопасность opts.
   const rows = db
     .select()
     .from(sources)
-    .limit(opts.limit)
-    .offset(opts.offset)
+    .limit(opts.limit as number)
+    .offset(opts.offset as number)
     .all();
   return rows.map(toDTO);
 }
