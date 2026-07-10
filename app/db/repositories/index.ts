@@ -9,3 +9,4 @@ export * as vacanciesRepo from "./vacancies";
 export * as applicationsRepo from "./applications";
 export * as resumeTemplatesRepo from "./resume_templates";
 export * as coverLettersRepo from "./cover_letters";
+export * as searchProfilesRepo from "./search_profiles";
