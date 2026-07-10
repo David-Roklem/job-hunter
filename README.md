@@ -58,15 +58,23 @@ app/
 ├── app.css           # базовые стили дашборда
 ├── env.server.ts     # zod-валидация process.env (единый источник конфига)
 ├── routes/
-│   └── _index.tsx    # дашборд `/` — loader возвращает { status, version }
+│   ├── _index.tsx         # дашборд `/` — loader возвращает { status, version }
+│   ├── resumes._index.tsx     # список резюме-шаблонов
+│   ├── resumes.new.tsx        # создание шаблона (вкл. загрузку .md/.pdf)
+│   └── resumes.$id.edit.tsx   # редактирование + удаление (intent=delete)
+├── resumes/                # feature-модуль: импорт markdown/PDF
+│   ├── import.ts           # importMarkdown / importPdf (pdf-parse) / detectKind
+│   ├── parseForm.ts        # разбор multipart-формы шаблона
+│   └── ResumeForm.tsx      # переиспользуемая форма (new + edit)
 └── db/
-    ├── index.ts      # единственное место открытия SQLite-соединения (better-sqlite3)
-    ├── schema.ts     # Drizzle-схема: 9 таблиц (sources, vacancies, applications, ...)
+    ├── index.ts      # открытие SQLite-соединения + createDb() фабрика (для тестов)
+    ├── schema.ts     # Drizzle-схема: 9 таблиц (sources, vacancies, resume_templates, ...)
     └── repositories/ # тонкий CRUD без бизнес-логики
         ├── _shared.ts       # типы, zod-схемы JSON-полей, toJson/fromJson
         ├── sources.ts       # CRUD источников вакансий
         ├── vacancies.ts     # CRUD вакансий (дедупликация UNIQUE source+external)
         ├── applications.ts  # CRUD откликов
+        ├── resume_templates.ts # CRUD резюме-шаблонов
         └── index.ts         # barrel-export
 tests/
 └── smoke.test.tsx    # smoke-тест: заголовок + loader contract
