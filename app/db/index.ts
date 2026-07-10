@@ -22,4 +22,13 @@ if (!existsSync(dir)) {
 /** Drizzle-соединение со схемой (relations доступны через with: {...}). */
 export const db = drizzle(new Database(dbPath), { schema });
 
+/**
+ * Фабрика Drizzle-соединения. Feature-код использует синглтон `db` выше;
+ * эта функция нужна тестам для создания изолированного in-memory соединения
+ * (drizzle + better-sqlite3 ":memory:").
+ */
+export function createDb(path: string | ":memory:") {
+  return drizzle(new Database(path), { schema });
+}
+
 export { dbPath };

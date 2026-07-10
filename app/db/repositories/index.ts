@@ -7,3 +7,4 @@
 export * as sourcesRepo from "./sources";
 export * as vacanciesRepo from "./vacancies";
 export * as applicationsRepo from "./applications";
+export * as resumeTemplatesRepo from "./resume_templates";
