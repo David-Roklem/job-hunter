@@ -114,8 +114,40 @@ export const sources = sqliteTable("sources", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   kind: text("kind", { enum: sourceKinds }).notNull(),
   name: text("name").notNull(),
-  // JSON: { url?, channel?, filters?, ... } — валидируется репозиторием.
+  // JSON: { url?, channel?, filters?, search_profile_id?, ... } — валидируется репозиторием.
   config_json: text("config_json").notNull(),
+  ...timestamps,
+});
+
+/**
+ * Профиль критериев поиска (несколько под разные роли/направления).
+ *
+ * Хранит параметры поиска hh + бинарный include/exclude фильтр (фаза 05).
+ * Привязка profile↔source — через sources.config_json.search_profile_id.
+ * JSON-массивы (areas/employment_types/include_keywords/exclude_keywords)
+ * парсятся в репозитории (searchProfilesRepo.DTO).
+ */
+export const searchProfiles = sqliteTable("search_profiles", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(), // "Backend", "Frontend", ...
+  // Текст запроса на hh (как в строке поиска).
+  query: text("query").notNull(),
+  // id регионов hh (числовые, как строки в массиве). JSON.
+  areas_json: text("areas_json").notNull().default("[]"),
+  // Допустимые типы занятости (наш enum employmentTypes). JSON.
+  employment_types_json: text("employment_types_json")
+    .notNull()
+    .default("[]"),
+  // Ключевые слова include: вакансия подходит, если есть в title/desc/skills. JSON.
+  include_keywords_json: text("include_keywords_json")
+    .notNull()
+    .default("[]"),
+  // Ключевые слова exclude: вакансия отбрасывается, если есть. JSON.
+  exclude_keywords_json: text("exclude_keywords_json")
+    .notNull()
+    .default("[]"),
+  min_salary: integer("min_salary"),
+  is_active: integer("is_active", { mode: "boolean" }).notNull().default(true),
   ...timestamps,
 });
 
