@@ -21,6 +21,10 @@ node_modules
 *.sqlite
 *.sqlite-journal
 
+# hh.ru session/profile (куки, localStorage, cache) — содержит приватную сессию
+/data/hh-profile/
+/data/hh-session.json
+
 # Logs
 *.log
 npm-debug.log*
