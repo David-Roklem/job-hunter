@@ -18,6 +18,13 @@ const EnvSchema = z.object({
     .default("./data/job_hunter.sqlite"),
 
   // Внешние сервисы — пока опциональны. Подключаются в следующих фазах.
+  ZAI_API_KEY: z.string().optional(),
+  ZAI_MODEL: z.string().default("glm-5.2"),
+  // GLM Coding Plan (PRO-подписка) требует dedicated endpoint /api/coding/paas/v4.
+  // Переопределить для обычного аккаунта (pay-as-you-go): https://api.z.ai/api/paas/v4.
+  ZAI_BASE_URL: z
+    .string()
+    .default("https://api.z.ai/api/coding/paas/v4"),
   YANDEX_GPT_API_KEY: z.string().optional(),
   TELEGRAM_BOT_TOKEN: z.string().optional(),
 });

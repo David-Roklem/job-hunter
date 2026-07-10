@@ -86,7 +86,7 @@ export const applicationStatuses = [
 ] as const;
 export type ApplicationStatus = (typeof applicationStatuses)[number];
 
-export const aiProviders = ["yandex", "gigachat"] as const;
+export const aiProviders = ["zai", "yandex", "gigachat"] as const;
 export type AiProvider = (typeof aiProviders)[number];
 
 export const jobKinds = [
