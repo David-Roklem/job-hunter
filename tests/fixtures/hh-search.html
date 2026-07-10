@@ -1,0 +1,25 @@
+<!--
+  Фикстура: страница результатов поиска hh.ru.
+  Имитирует структуру с data-qa атрибутами (см. app/hh/selectors.ts).
+  Реальная разметка может отличаться — smoke-тест ловит сломанные селекторы.
+-->
+<div data-qa="serp-item">
+  <a data-qa="serp-item__title" href="/vacancy/11111111?query=node">Senior Node.js Developer</a>
+  <a data-qa="vacancy-serp__vacancy-employer" href="/employer/123">Тест-Компания</a>
+  <div data-qa="vacancy-serp__vacancy-compensation">200 000 – 250 000 руб.</div>
+  <div data-qa="vacancy-serp__vacancy-address">Москва</div>
+</div>
+<div data-qa="serp-item">
+  <a data-qa="serp-item__title" href="/vacancy/22222222?query=node">Backend Developer</a>
+  <a data-qa="vacancy-serp__vacancy-employer" href="/employer/456">Ещё Компания</a>
+  <div data-qa="vacancy-serp__vacancy-compensation">от 150 000 руб.</div>
+  <div data-qa="vacancy-serp__vacancy-address">Санкт-Петербург</div>
+</div>
+<div data-qa="serp-item">
+  <a data-qa="serp-item__title" href="/vacancy/33333333?query=node">Frontend Developer</a>
+  <div data-qa="vacancy-serp__vacancy-compensation">зарплата не указана</div>
+</div>
+<!-- Карточка без валидного URL (реклама) — должна пропасть -->
+<div data-qa="serp-item">
+  <a data-qa="serp-item__title" href="/some/promo">Promo Card</a>
+</div>
