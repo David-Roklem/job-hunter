@@ -5,7 +5,7 @@
 | 01 | bootstrap | pending | Скелет Remix-приложения, БД (SQLite/Drizzle), конфиг, запуcк локально |
 | 02 | data-model | complete | Схема: вакансии, компании, резюме-шаблоны, отклики, письма, теги, источники, очередь задач ✓ 2026-07-08 |
 | 03 | resume-templates | complete | CRUD нескольких резюме-шаблонов; загрузка markdown/PDF; редактирование ✓ 2026-07-10 |
-| 04 | ai-provider | pending | Интеграция Yandex GPT (и GigaChat как fallback): промпты под сопроводительные и адаптацию резюме |
+| 04 | ai-provider | complete | z.ai (GLM-5.2) провайдер + промпты + generateCoverLetter → cover_letters ✓ 2026-07-10 |
 | 05 | source-hh | pending | Playwright-сессия hh.ru: логин, поиск по фильтрам, парсинг вакансий, сохранение в БД |
 | 06 | source-aggregators | pending | Парсеры карьерных страниц компаний + aggregator-сайтов (адаптивные селекторы) |
 | 07 | source-telegram | pending | Чтение вакансий из Telegram-каналов через Telegram API, извлечение контактов/требований |
