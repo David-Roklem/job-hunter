@@ -26,12 +26,16 @@ export type CreateApplicationInput = {
   status?: ApplicationStatus;
 };
 
-/** Найти отклик по id (с relation'ами vacancy + resume_template + cover_letter). */
+/** Найти отклик по id (с relation'ами vacancy → company + resume_template + cover_letter). */
 export async function findById(id: number) {
   return db.query.applications.findFirst({
     where: eq(applications.id, id),
     with: {
-      vacancy: true,
+      vacancy: {
+        with: {
+          company: true,
+        },
+      },
       resume_template: true,
       cover_letter: true,
     },
