@@ -56,7 +56,7 @@ const timestamps = {
 // Enum-типы (выводятся из text({ enum }) — без ручных union-ов).
 // ---------------------------------------------------------------------------
 
-export const sourceKinds = ["hh", "company", "telegram"] as const;
+export const sourceKinds = ["hh", "company", "telegram", "aggregator"] as const;
 export type SourceKind = (typeof sourceKinds)[number];
 
 export const vacancyStatuses = [
