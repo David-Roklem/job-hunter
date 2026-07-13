@@ -7,7 +7,7 @@
  * Переиспользует инфраструктуру фазы 05:
  *  - app/hh/filter.ts → filterVacancy (бинарный matched/rejected)
  *  - app/hh/human.ts → поведенческая имитация + задержки (анти-бот)
- *  - app/browser/session.ts → launchPersistentContext + applyStealth
+ *  - app/browser/session.ts → Camoufox persistent context (geoip + humanize)
  *  - таблицы vacancies/companies, репозитории
  *
  * Отличия от hh/collect.ts:
