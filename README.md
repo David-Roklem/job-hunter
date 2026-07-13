@@ -24,15 +24,16 @@
 Требуется **Node.js 22+** (проверено на 24).
 
 ```bash
-# 1. Установить зависимости
+# 1. Установить JS-зависимости
 npm install
 
-# 2. Скачать браузер Camoufox (~1 GB, один раз) — нужен для сбора вакансий
-npm run camoufox:fetch
+# 2. Установить Python-bridge (Camoufox launcher)
+#    Требуется uv (https://docs.astral.sh/uv/) и Python 3.12+
+cd python-bridge && uv sync && cd ..
+uv run --project python-bridge python -m camoufox fetch   # скачать Firefox (~1 GB, один раз)
 
 # 3. Настроить окружение
 cp .env.example .env
-#   (в bootstrap все ключи опциональны — можно оставить как есть)
 
 # 4. Сгенерировать и применить миграции БД
 npm run db:generate
@@ -44,10 +45,14 @@ npm run dev
 
 Откройте http://localhost:5173 — увидите дашборд со статусом `status: ok`.
 
-> **Cloudflare-бот-детект:** Wellfound (и другие зарубежные площадки) детектят
-> автоматизацию по IP. Если `wellfound:login` получает страницу «Access
-> temporarily restricted» — запустите под VPN: Camoufox `geoip:true` возьмёт
-> IP шлюза и сгенерирует согласованный fingerprint автоматически.
+> **Camoufox через Python-bridge:** сбор вакансий использует модифицированный Firefox
+> (Camoufox, FingerprintForge на уровне движка). Node spawn'ит Python-сервер
+> (`uv run python python-bridge/serve.py`), который запускает браузер и отдаёт
+> WebSocket endpoint для подключения через `firefox.connect()`. Это обходит
+> Cloudflare bot-detect, на котором падал обычный Playwright/Chromium.
+>
+> **Cloudflare по IP:** если `wellfound:login` всё равно получает «Access
+> temporarily restricted» — запустите под VPN.
 
 ## Команды
 
@@ -61,7 +66,6 @@ npm run dev
 | `npm run test:watch` | Тесты в watch-режиме                                  |
 | `npm run db:generate`| Генерация SQL-миграций из `app/db/schema.ts`          |
 | `npm run db:migrate` | Применение миграций к SQLite                          |
-| `npm run camoufox:fetch` | Скачать браузер Camoufox (~1 GB, один раз)        |
 | `npm run hh:seed`    | Создать source + profile для hh.ru в БД               |
 | `npm run hh:login`   | Ручной логин на hh.ru (headed Camoufox, куки персист.) |
 | `npm run hh:collect` | Сбор вакансий с hh.ru (headless)                      |
