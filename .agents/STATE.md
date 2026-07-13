@@ -1,6 +1,6 @@
 ---
 milestone: 0.1.0
-current_position: phase 06 source-aggregators (Wellfound) реализована — автотесты 80/80 зелёные; ручной smoke ОТЛОЖЕН (Cloudflare bot-detect блокирует Playwright по IP); готова эскалация анти-детекта (Camoufox)
+current_position: camoufox-stealth ВЫПОЛНЕНА — Camoufox через Python-bridge прошёл Cloudflare (wellfound:login успешен); селекторы Wellfound не совпадают с реальностью (отдельная работа); готова фаза 07 (source-telegram) или фикс селекторов
 last_updated: 2026-07-13
 ---
 
@@ -41,4 +41,8 @@ Use `/soly` to see current state. Use `/plan N` to plan phase N.
 | 2026-07-13 | Фаза 06 = Wellfound (aggregator) через Playwright поверх общего browser/session. Расширен sourceKinds += 'aggregator'. Вынесен app/browser/session.ts (locale/timezone/profileDir-параметризованный). Wellfound SPA → waitForSelector. Свой parseSalary под $/k. | Второй источник после hh; первое переиспользование инфраструктуры фазы 05. План: app/wellfound/ зеркало app/hh/. | 6 |
 | 2026-07-13 | Ручной smoke Wellfound ОТЛОЖЕН: Cloudflare bot-detect блокирует Playwright по IP (202.148.55.56) ещё до формы логина. Уровень анти-детекта 2 (ручные stealth) недостаточен для Wellfound. | Блок внешний, не баг кода (автотесты 80/80 зелёные). Smoke hh (фаза 05) тоже pending. Лечится эскалацией анти-детекта. | 6 |
 | 2026-07-13 | Эскалация анти-детекта: Camoufox (Firefox-based) как ОБЩИЙ браузер-стек для всех источников (hh + wellfound). | Пользователь выбрал Camoufox после bot-detect'а Wellfound. Заменит ядро app/browser/session.ts (Chromium → Camoufox). Отдельный план/фаза; повторный smoke обоих источников после миграции. | 6 |
+| 2026-07-13 | Camoufox через Python-bridge: Python (camoufox@0.4.11) launch_server → Node firefox.connect. ОБЩИЙ стек для всех источников. JS-порт camoufox@0.1.19 отвергнут (3 бага). | Cloudflare заблокировал Playwright/Chromium на Wellfound (фаза 06). Camoufox (модифицированный Firefox, FingerprintForge) обходит его. Python-порт стабилен, JS-порт сырой. | camoufox-stealth |
+| 2026-07-13 | playwright pinned 1.50.0 (JS + Python) — протокольный матч для firefox.connect. | Эмпирическая находка POC: 1.61 даёт WS-handshake fail (version skew с Camoufox-driver). Зафиксировано в обоих манифестах. | camoufox-stealth |
+| 2026-07-13 | python-bridge/package.json БЕЗ type:module — иначе camoufox's launchServer.js (CJS) заражается корневым ESM-флагом. | Эмпирическая находка: launch_server валился с require-is-not-defined из-за апстрим package.json type:module. | camoufox-stealth |
+| 2026-07-13 | Селекторы Wellfound (data-testid) НЕ совпадают с реальностью — переносится в отдельную работу. camoufox-stealth закрыт на главной цели (Cloudflare пройден). | Smoke нашёл: data-testid нет, карточки на Tailwind + a[href*=/jobs/]. Пользователь решил не раздувать stealth-фазу фиксом парсеров. | camoufox-stealth |
 | 2026-07-08 | Initial scaffold | Created by `soly init` |
