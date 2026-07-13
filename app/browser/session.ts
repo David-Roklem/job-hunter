@@ -17,7 +17,7 @@
  * ВНИМАНИЕ: один Camoufox-процесс на data_dir одновременно. Скрипты должны
  * закрывать context (try/finally).
  */
-import { Camoufox } from "camoufox";
+import { Camoufox } from "./camoufox";
 import type { BrowserContext, Page } from "playwright";
 
 export type CreateContextOptions = {
@@ -53,7 +53,6 @@ export async function createContext(
     data_dir: opts.profileDir,
     headless: !opts.headed,
     humanize: true,
-    geoip: true,
     locale: opts.locale ?? "ru-RU",
   })) as BrowserContext;
   return context;

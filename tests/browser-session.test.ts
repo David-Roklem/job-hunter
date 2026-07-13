@@ -14,7 +14,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Мок Camoufox: перехватываем вызов, сохраняем опции.
 const camoufoxMock = vi.fn();
-vi.mock("camoufox", () => ({
+vi.mock("~/browser/camoufox", () => ({
   Camoufox: (opts: unknown) => {
     camoufoxMock(opts);
     // Возвращаем fake-объект (реальный BrowserContext не нужен для этих тестов).
@@ -53,11 +53,11 @@ describe("createContext (Camoufox layer)", () => {
     expect(opts.humanize).toBe(true);
   });
 
-  it("передаёт geoip:true (авто timezone/locale/country по IP)", async () => {
+  it("НЕ передаёт geoip (отключено — баг camoufox@0.1.19: publicIP валится на proxy-handling)", async () => {
     await createContext({ profileDir: "/tmp/x" });
 
     const opts = camoufoxMock.mock.calls[0][0] as Record<string, unknown>;
-    expect(opts.geoip).toBe(true);
+    expect(opts).not.toHaveProperty("geoip");
   });
 
   it("использует locale ru-RU по умолчанию (hh)", async () => {
