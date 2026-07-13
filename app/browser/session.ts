@@ -2,23 +2,28 @@
  * Общий браузерный контекст для всех источников вакансий (hh, wellfound, …).
  *
  * Движок: **Camoufox** (модифицированный Firefox с FingerprintForge на уровне
- * движка C++). Заменил Chromium/Playwright + ручные stealth init-scripts
- * (фаза camoufox-stealth) после Cloudflare bot-detect'а Wellfound'а.
+ * движка C++). Запускается через **Python-bridge** (CDP/Playwright-server):
+ *
+ *   Node (этот модуль) → spawn `uv run python python-bridge/serve.py`
+ *                     → Python запускает Camoufox как Playwright-server
+ *                     → возвращает wsEndpoint
+ *                     → Node: `firefox.connect(wsEndpoint)`
  *
  * Camoufox покрывает анти-детект нативно: fingerprint генерируется через
- * BrowserForge, `humanize:true` — реалистичные движения курсора, `geoip:true`
- * автоматически вычисляет timezone/locale/country по IP (согласованный отпечаток,
- * убирает рассогласование timezone vs IP-геолокации).
+ * BrowserForge, `humanize:true` (передаётся в serve.py) — реалистичные движения
+ * курсора. Профиль персистентен в `data_dir` (Python-side): куки/localStorage
+ * переживают перезапуски, повторный логин не нужен.
  *
- * Источник-специфичные обёртки (app/hh/session.ts, app/wellfound/session.ts)
- * передают сюда свой profileDir (= Camoufox data_dir, persistent context) и
- * locale (языковой интерфейс). Поведенческая имитация (human.ts) — общая.
+ * Почему Python-bridge, а не JS-порт camoufox: JS-порт (camoufox@0.1.19) сырой —
+ * 3 бага (ESM dynamic-require, geoip proxy, viewport protocol skew). Python-порт
+ * (camoufox@0.4.11) стабилен, активно поддерживается. POC доказан end-to-end
+ * 2026-07-13: fingerprint {webdriver:false, plugins:5, Firefox/135}.
  *
- * ВНИМАНИЕ: один Camoufox-процесс на data_dir одновременно. Скрипты должны
- * закрывать context (try/finally).
+ * ВНИМАНИЕ: один Camoufox-процесс на data_dir одновременно (lock профиля).
+ * Скрипты должны закрывать context через try/finally (stop() убивает сервер).
  */
-import { Camoufox } from "./camoufox";
-import type { BrowserContext, Page } from "playwright";
+import { firefox, type Browser, type BrowserContext, type Page } from "playwright";
+import { launchCamoufoxServer } from "./launcher";
 
 export type CreateContextOptions = {
   /** Директория персистентного профиля браузера (ОБЯЗАТЕЛЬНО — у каждого источника свой). */
@@ -29,17 +34,16 @@ export type CreateContextOptions = {
   locale?: string;
 };
 
+/** Внутренний тип: context + ссылка на stop() для cleanup. */
+type CamoufoxBrowserContext = BrowserContext & {
+  /** Остановить Python-Camoufox-server (kill процесса). Вызывается в finally. */
+  __stopServer?: () => Promise<void>;
+};
+
 /**
- * Создать Camoufox browser context с персистентным профилем.
+ * Создать Camoufox browser context: запустить Python-server, подключиться по WS.
  *
- * Camoufox сам генерирует fingerprint (UA, screen, WebGL, plugins и т.д.) через
- * BrowserForge — ручные stealth-патчи НЕ применяются (они были Chromium-specific
- * и конфликтовали с fingerprint-генератором).
- *
- * geoip:true — Camoufox определяет IP и выставляет timezone/locale/country
- * согласованно (убирает рассогласование, которое было при ручном timezoneId).
- *
- * @throws если profileDir не передан
+ * @throws если profileDir пуст, uv не найден, или сервер не стартовал за 60s.
  */
 export async function createContext(
   opts: CreateContextOptions,
@@ -49,13 +53,50 @@ export async function createContext(
       "createContext: profileDir обязателен (у каждого источника свой)",
     );
   }
-  const context = (await Camoufox({
-    data_dir: opts.profileDir,
-    headless: !opts.headed,
-    humanize: true,
-    locale: opts.locale ?? "ru-RU",
-  })) as BrowserContext;
-  return context;
+
+  // 1. Запустить Python-Camoufox-server, получить wsEndpoint.
+  const { wsEndpoint, stop } = await launchCamoufoxServer({
+    profileDir: opts.profileDir,
+    headed: opts.headed,
+    locale: opts.locale,
+  });
+
+  // 2. Подключиться к серверу через Playwright-server protocol (firefox.connect).
+  let browser: Browser;
+  try {
+    browser = await firefox.connect(wsEndpoint);
+  } catch (e) {
+    await stop();
+    throw new Error(
+      `createContext: firefox.connect failed: ${e instanceof Error ? e.message : String(e)}`,
+    );
+  }
+
+  // 3. Получить/создать context. Сервер Camoufox может держать default context
+  //    (с persistent data_dir) или нет — обработать оба случая.
+  let context: BrowserContext;
+  const contexts = browser.contexts();
+  if (contexts.length > 0) {
+    context = contexts[0]!;
+  } else {
+    // Remote browser без default context — создать новый. Куки всё равно
+    // персистятся в data_dir (управляется Camoufox-side).
+    context = await browser.newContext();
+  }
+
+  // 4. Обернуть context.close(): убить Python-сервер после закрытия.
+  const originalClose = context.close.bind(context);
+  const wrappedContext = context as CamoufoxBrowserContext;
+  wrappedContext.__stopServer = stop;
+  wrappedContext.close = async () => {
+    try {
+      await originalClose();
+    } finally {
+      await stop();
+    }
+  };
+
+  return wrappedContext;
 }
 
 /**
