@@ -1,0 +1,12 @@
+[project]
+name = "python-bridge"
+version = "0.1.0"
+description = "Camoufox launcher for job_hunter — runs Playwright-server, prints wsEndpoint"
+requires-python = ">=3.12"
+dependencies = [
+    "camoufox>=0.4.11",
+    # PIN: JS-playwright (Node-side firefox.connect) должен совпадать по версии
+    # с playwright-driver, который Camoufox использует для launch_server.
+    # 1.50.0 = рабочий матч (POC 2026-07-13). 1.61 даёт WS-handshake fail.
+    "playwright==1.50.*",
+]
