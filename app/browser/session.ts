@@ -58,7 +58,7 @@ export async function createContext(
   const { wsEndpoint, stop } = await launchCamoufoxServer({
     profileDir: opts.profileDir,
     headed: opts.headed,
-    locale: opts.locale,
+    locale: opts.locale ?? "ru-RU",
   });
 
   // 2. Подключиться к серверу через Playwright-server protocol (firefox.connect).
