@@ -1,0 +1,19 @@
+<!--
+  Фикстура: детальная страница вакансии Wellfound.
+  Имитирует структуру с data-testid атрибутами (см. app/wellfound/selectors.ts).
+  Структура для детальной: job-description (полный текст), skill-tag (навыки),
+  compensation (equity/зарплата отдельным блоком).
+-->
+<div data-testid="job-description">
+  <p>We are looking for a Senior Backend Engineer to join our platform team.</p>
+  <p>You will work on microservices, APIs and distributed systems. Strong
+  experience with Node.js and PostgreSQL is required. We value clean code,
+  testing and operational excellence.</p>
+  <p>Remote-friendly, US time zones preferred.</p>
+</div>
+<div>
+  <span data-testid="skill-tag">Node.js</span>
+  <span data-testid="skill-tag">PostgreSQL</span>
+  <span data-testid="skill-tag">Docker</span>
+</div>
+<div data-testid="compensation">$150k–$180k + equity</div>

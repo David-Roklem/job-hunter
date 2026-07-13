@@ -127,15 +127,18 @@ export function parseSalary(
   if (/\$/i.test(cleaned)) result.currency = "USD";
 
   // Диапазон "$150k–$180k" / "$90,000 - $110,000" (–, -, —).
-  const rangeMatch = cleaned.match(/\$?\s*([\d.,]+)\s*k?\s*[–—-]\s*\$?\s*([\d.,]+)\s*k?/i);
+  // Группы захватывают "k" чтобы parseMoney применил множитель ×1000.
+  const rangeMatch = cleaned.match(
+    /\$?\s*([\d.,]+k?)\s*[–—-]\s*\$?\s*([\d.,]+k?)/i,
+  );
   if (rangeMatch) {
     result.from = parseMoney(rangeMatch[1]);
     result.to = parseMoney(rangeMatch[2]);
     return result;
   }
 
-  // Одиночное значение "$120K" / "$90,000".
-  const singleMatch = cleaned.match(/\$?\s*([\d.,]+)\s*k?\b/i);
+  // Одиночное значение "$120K" / "$90,000". Группа захватывает "k".
+  const singleMatch = cleaned.match(/\$?\s*([\d.,]+k?)\b/i);
   if (singleMatch) {
     result.from = parseMoney(singleMatch[1]);
     return result;

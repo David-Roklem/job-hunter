@@ -1,0 +1,32 @@
+<!--
+  Фикстура: страница результатов поиска Wellfound (job listings).
+  Имитирует структуру с data-testid атрибутами (см. app/wellfound/selectors.ts).
+  Реальная разметка Wellfound — React SPA, data-testid стабильны, но могут
+  отличаться от этого приближения; ручной smoke ловит сломанные селекторы.
+-->
+<div data-testid="job-listing">
+  <a data-testid="job-link" href="/jobs/1111111-senior-backend-engineer">Senior Backend Engineer</a>
+  <a data-testid="company-name" href="/company/acme-corp">Acme Corp</a>
+  <div data-testid="location">Remote (US)</div>
+  <div data-testid="compensation">$150k–$180k</div>
+  <span data-testid="skill-tag">Node.js</span>
+  <span data-testid="skill-tag">PostgreSQL</span>
+</div>
+<div data-testid="job-listing">
+  <a data-testid="job-link" href="/jobs/2222222-backend-developer">Backend Developer</a>
+  <a data-testid="company-name" href="/company/another-co">Another Co</a>
+  <div data-testid="location">New York, NY</div>
+  <div data-testid="compensation">$120K</div>
+  <span data-testid="skill-tag">Python</span>
+  <span data-testid="skill-tag">Node.js</span>
+</div>
+<div data-testid="job-listing">
+  <a data-testid="job-link" href="/jobs/3333333-full-stack-engineer">Full Stack Engineer</a>
+  <div data-testid="location">San Francisco, CA</div>
+  <div data-testid="compensation">equity-only</div>
+  <!-- компания не указана -->
+</div>
+<!-- Карточка без валидного URL вакансии (промо/реклама) — должна пропасть -->
+<div data-testid="job-listing">
+  <a data-testid="job-link" href="/promo/some-promo">Promo Card</a>
+</div>
