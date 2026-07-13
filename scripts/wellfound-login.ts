@@ -3,7 +3,7 @@
  *
  * Запуск: npm run wellfound:login
  *
- * Открывает headed-браузер на wellfound.com/users/sign_in, ждёт пока
+ * Открывает headed-браузер на wellfound.com/login, ждёт пока
  * пользователь залогинится (poll isLoggedIn). Сессия (куки/localStorage)
  * сохраняется автоматически через launchPersistentContext в
  * data/wellfound-profile (ОТДЕЛЬНЫЙ от hh — куки не смешиваются).

@@ -41,11 +41,15 @@ export function createContext(
 
 /**
  * Проверить, залогинен ли пользователь на Wellfound.
- * URL входа (/users/sign_in) трактуется как «не залогинен».
+ * URL входа (/login, /users/sign_in, /sign_in) трактуется как «не залогинен».
  */
 export async function isLoggedIn(page: Page): Promise<boolean> {
   const url = page.url();
-  if (url.includes("/users/sign_in") || url.includes("/sign_in")) {
+  if (
+    url.includes("/login") ||
+    url.includes("/users/sign_in") ||
+    url.includes("/sign_in")
+  ) {
     return false;
   }
   return isLoggedInBase(page, [...WF_LOGIN_MARKERS]);

@@ -42,7 +42,7 @@ export const WF_SELECTORS = {
 export const WF_SEARCH_URL = "https://wellfound.com/jobs";
 
 /** URL входа Wellfound (ручной логин в headed-браузере). */
-export const WF_LOGIN_URL = "https://wellfound.com/users/sign_in";
+export const WF_LOGIN_URL = "https://wellfound.com/login";
 
 /**
  * Маркеры залогиненного состояния Wellfound.
