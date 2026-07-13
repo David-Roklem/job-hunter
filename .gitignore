@@ -25,6 +25,9 @@ node_modules
 /data/hh-profile/
 /data/hh-session.json
 
+# Wellfound session/profile (куки, localStorage, cache) — содержит приватную сессию
+/data/wellfound-profile/
+
 # Logs
 *.log
 npm-debug.log*
