@@ -72,7 +72,6 @@ vi.mock("~/hh/session", () => ({
 vi.mock("~/hh/human", () => ({
   humanDelay: vi.fn(async () => {}),
   humanPretend: vi.fn(async () => {}),
-  humanMouseMove: vi.fn(async () => {}),
   humanScroll: vi.fn(async () => {}),
 }));
 
