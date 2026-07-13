@@ -1,83 +1,57 @@
 /**
- * Playwright-сессия для hh.ru.
+ * Playwright-сессия для hh.ru — тонкая обёртка над общим app/browser/session.ts.
  *
- * Использует launchPersistentContext — реальный профиль браузера в
- * data/hh-profile (куки/localStorage/cache/indexedDB персистятся). Это
- * правдоподобнее с точки зрения fingerprint, чем изолированный newContext
- * каждый раз. Применяется анти-детект (applyStealth) + согласованные
- * locale/UA/viewport.
+ * Исторически (фаза 05) createContext/isLoggedIn жили здесь; вынесены в
+ * app/browser/session.ts в фазе 06 для переиспользования wellfound и будущими
+ * источниками. Публичный API этого модуля сохранён ради обратной совместимости
+ * (скрипты hh-login/stealth-check/collect-hh и vi.mock("~/hh/session") в тестах).
  *
- * Первый запуск — headed (ручной логин с капчей/2FA в hh-login.ts).
- * Дальше — headless, куки переиспользуются.
+ * hh-специфика: profileDir=data/hh-profile, locale=ru-RU, timezone=Europe/Moscow,
+ * маркеры залогиненности — hh-селекторы.
  */
 import path from "node:path";
-import { chromium, type BrowserContext, type Page } from "playwright";
-import { applyStealth } from "./stealth";
+import type { Page } from "playwright";
+import {
+  createContext as createContextBase,
+  isLoggedIn as isLoggedInBase,
+  type CreateContextOptions as BaseCreateContextOptions,
+} from "~/browser/session";
 
-/** Директория персистентного профиля браузера (data/hh-profile). */
+/** Директория персистентного профиля браузера hh (data/hh-profile). */
 export const PROFILE_DIR = path.join(process.cwd(), "data", "hh-profile");
 
-/**
- * User-Agent десктопного Chrome (без суффикса HeadlessChrome, который детектится).
- * Согласован с locale/viewport. Обновлять при устаревании.
- */
-const DESKTOP_UA =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
-
-/** Типичные десктопные разрешения (рандомизация viewport — анти-fingerprint). */
-const VIEWPORTS = [
-  { width: 1920, height: 1080 },
-  { width: 1536, height: 864 },
-  { width: 1440, height: 900 },
-  { width: 1366, height: 768 },
+/** Маркеры залогиненности на hh (проверяются через общий isLoggedIn). */
+const HH_LOGIN_MARKERS = [
+  '[data-qa="mainmenu_myResumes"]',
+  '[data-qa="account-menu"]',
 ];
 
-function randomViewport() {
-  return VIEWPORTS[Math.floor(Math.random() * VIEWPORTS.length)];
-}
-
-export type CreateContextOptions = {
-  /** true → видимый браузер (для ручного логина). По умолчанию false (headless). */
-  headed?: boolean;
-};
+export type CreateContextOptions = Pick<BaseCreateContextOptions, "headed">;
 
 /**
- * Создать browser context с персистентным профилем + анти-детектом.
- *
- * ВНИМАНИЕ: launchPersistentContext может открыть только ОДИН context на
- * PROFILE_DIR одновременно. Скрипты сбора/логина должны закрывать context
- * перед завершением (try/finally).
+ * Создать browser context с персистентным hh-профилем + анти-детектом.
+ * locale/timezone зафиксированы под hh (ru-RU / Europe-Moscow).
  */
-export async function createContext(
+export function createContext(
   opts: CreateContextOptions = {},
-): Promise<BrowserContext> {
-  const context = await chromium.launchPersistentContext(PROFILE_DIR, {
-    headless: !opts.headed,
+): ReturnType<typeof createContextBase> {
+  return createContextBase({
+    profileDir: PROFILE_DIR,
+    headed: opts.headed,
     locale: "ru-RU",
-    timezoneId: "Europe/Moscow",
-    viewport: randomViewport(),
-    userAgent: DESKTOP_UA,
+    timezone: "Europe/Moscow",
   });
-  await applyStealth(context);
-  return context;
 }
 
 /**
  * Проверить, залогинен ли пользователь на hh.ru.
- * Детект по наличию селектора залогиненного состояния (кнопка входа исчезла
- * ИЛИ появился селектор меню аккаунта). Точный селектор уточняется при smoke.
+ * Детект по наличию селектора аккаунта (data-qa markers). URL логина
+ * (/account/login, /auth) трактуется как «не залогинен».
  */
 export async function isLoggedIn(page: Page): Promise<boolean> {
-  // На hh.ru после логина появляется блок аккаунта (селектор может меняться —
-  // проверяем несколько признаков). URL логина редиректит на главную.
   const url = page.url();
   if (url.includes("/account/login") || url.includes("/auth")) {
     return false;
   }
-  // Признак залогиненности: есть ссылка на резюме/отклики в шапке.
-  const accountMarker = await page
-    .locator('[data-qa="mainmenu_myResumes"], [data-qa="account-menu"]')
-    .count()
-    .catch(() => 0);
-  return accountMarker > 0;
+  return isLoggedInBase(page, HH_LOGIN_MARKERS);
 }
