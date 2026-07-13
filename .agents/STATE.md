@@ -1,7 +1,7 @@
 ---
 milestone: 0.1.0
-current_position: phase 05 source-hh реализована (автотесты зелёные) — ручной smoke (логин+сбор) отложен; готова фаза 06
-last_updated: 2026-07-10
+current_position: phase 06 source-aggregators (Wellfound) реализована — автотесты 80/80 зелёные; ручной smoke ОТЛОЖЕН (Cloudflare bot-detect блокирует Playwright по IP); готова эскалация анти-детекта (Camoufox)
+last_updated: 2026-07-13
 ---
 
 # Project state — job_hunter
@@ -38,4 +38,7 @@ Use `/soly` to see current state. Use `/plan N` to plan phase N.
 | WebGL vendor/renderer НЕ маскируется: реальный GPU-отпечаток (напр. "Google Inc. (NVIDIA)" через ANGLE на десктопе пользователя) — правдоподобный десктопный отпечаток, а не headless-маркер. Подмена на Intel создавала бы несоответствие и ухудшала скрытность. Маска включается только если окружение реально headless (SwiftShader). | stealth-check показал "Google Inc. (NVIDIA)" — это настоящее железо пользователя через ANGLE, выглядит как легитимный десктоп. Headless-маркер — это "SwiftShader"/"Google Inc. (Google)". Подмена реального отпечатка на чужой (Intel) — антипаттерн: детекторы ловят несоответствия между UA/GPU/экраном. | 5 |
 | Фокус проекта смещён с «только РФ» на «международный/зарубежный рынок + hh.ru». Добавлен Wellfound как первый зарубежный источник (фаза 06). | Пользователь явно указал смену фокуса на зарубежный рынок. hh.ru остаётся. Wellfound — зарубежная площадка с сильной JS-разметкой (SPA), что делает его хорошим референсом для Playwright-парсинга. Vision.md обновлён, non-goal «поддержка зарубежных рынков» убран. | 6 |
 |------|----------|-----|
+| 2026-07-13 | Фаза 06 = Wellfound (aggregator) через Playwright поверх общего browser/session. Расширен sourceKinds += 'aggregator'. Вынесен app/browser/session.ts (locale/timezone/profileDir-параметризованный). Wellfound SPA → waitForSelector. Свой parseSalary под $/k. | Второй источник после hh; первое переиспользование инфраструктуры фазы 05. План: app/wellfound/ зеркало app/hh/. | 6 |
+| 2026-07-13 | Ручной smoke Wellfound ОТЛОЖЕН: Cloudflare bot-detect блокирует Playwright по IP (202.148.55.56) ещё до формы логина. Уровень анти-детекта 2 (ручные stealth) недостаточен для Wellfound. | Блок внешний, не баг кода (автотесты 80/80 зелёные). Smoke hh (фаза 05) тоже pending. Лечится эскалацией анти-детекта. | 6 |
+| 2026-07-13 | Эскалация анти-детекта: Camoufox (Firefox-based) как ОБЩИЙ браузер-стек для всех источников (hh + wellfound). | Пользователь выбрал Camoufox после bot-detect'а Wellfound. Заменит ядро app/browser/session.ts (Chromium → Camoufox). Отдельный план/фаза; повторный smoke обоих источников после миграции. | 6 |
 | 2026-07-08 | Initial scaffold | Created by `soly init` |
