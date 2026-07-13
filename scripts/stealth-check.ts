@@ -1,13 +1,16 @@
 /**
- * Diagnostic-скрипт: проверить анти-детект init-scripts на реальном браузере.
+ * Diagnostic-скрипт: проверить анти-детект fingerprint на реальном браузере.
  *
  * Запуск: npm run hh:stealth-check
  *
- * Открывает https://bot.sannysoft.com/ (стандартный тест бот-детекта) + hh.ru,
+ * Открывает https://bot.sannysoft.com/ (стандартный тест бот-детекта),
  * снимает отпечатки (navigator.webdriver, plugins, webgl vendor). Цель:
  *   - navigator.webdriver === undefined
  *   - navigator.plugins.length > 0
  *   - WebGL vendor !== "Google Inc. (Google)" (SwiftShader)
+ *
+ * С фазы camoufox-stealth: createContext использует Camoufox (модифицированный
+ * Firefox, FingerprintForge на уровне движка). Этот скрипт проверяет его отпечаток.
  *
  * НЕ автотест — ручная проверка перед реальным сбором.
  */

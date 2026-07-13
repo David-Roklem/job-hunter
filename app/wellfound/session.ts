@@ -3,7 +3,8 @@
  *
  * Параметризует общий createContext под Wellfound:
  *  - profileDir = data/wellfound-profile (ОТДЕЛЬНЫЙ от hh — куки не смешиваются)
- *  - locale = en-US, timezone = America/New_York (американская площадка)
+ *  - locale = en-US (американская площадка). timezone убран в фазе
+ *    camoufox-stealth — Camoufox geoip:true вычисляет по IP автоматически.
  *
  * Анти-детект (stealth) и поведенческая имитация (human) — общие с hh.
  *
@@ -26,7 +27,7 @@ export type CreateContextOptions = Pick<BaseCreateContextOptions, "headed">;
 
 /**
  * Создать browser context с персистентным wellfound-профилем + анти-детектом.
- * locale/timezone зафиксированы под Wellfound (en-US / America/New_York).
+ * locale зафиксирован под Wellfound (en-US). timezone — через Camoufox geoip.
  */
 export function createContext(
   opts: CreateContextOptions = {},
@@ -35,17 +36,20 @@ export function createContext(
     profileDir: PROFILE_DIR,
     headed: opts.headed,
     locale: "en-US",
-    timezone: "America/New_York",
   });
 }
 
 /**
  * Проверить, залогинен ли пользователь на Wellfound.
- * URL входа (/users/sign_in) трактуется как «не залогинен».
+ * URL входа (/login, /users/sign_in, /sign_in) трактуется как «не залогинен».
  */
 export async function isLoggedIn(page: Page): Promise<boolean> {
   const url = page.url();
-  if (url.includes("/users/sign_in") || url.includes("/sign_in")) {
+  if (
+    url.includes("/login") ||
+    url.includes("/users/sign_in") ||
+    url.includes("/sign_in")
+  ) {
     return false;
   }
   return isLoggedInBase(page, [...WF_LOGIN_MARKERS]);

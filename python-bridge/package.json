@@ -1,0 +1,6 @@
+{
+  "name": "python-bridge-runner",
+  "private": true,
+  "version": "0.0.0",
+  "comment": "Этот package.json НЕ содержит type:module намеренно — camoufox's launchServer.js использует CommonJS require(), и без явного CJS-флага он 'заражается' ESM-режимом корневого package.json (type:module), что валит launch_server. НЕ добавлять type:module сюда."
+}

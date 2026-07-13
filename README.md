@@ -1,17 +1,22 @@
 # job_hunter
 
-Персональный локальный помощник поиска работы на российском рынке.
-Собирает вакансии из hh.ru, сайтов компаний и Telegram-каналов, сопоставляет
+Персональный локальный помощник поиска работы на **международном и зарубежном рынке**
+(с сохранением российского рынка через hh.ru). Собирает вакансии из hh.ru,
+международных агреггаторов (Wellfound) и сайтов компаний, сопоставляет
 с несколькими версиями резюме, готовит черновики откликов и сопроводительных
-писем через Yandex GPT — человек только подтверждает.
+писем через AI — человек только подтверждает.
 
-> **Статус:** bootstrap + data-модель. Сбор источников, matcher, AI-генерация — в следующих фазах.
+> **Статус:** bootstrap + data-модель + resume-templates + AI-провайдер (z.ai) +
+> сборщики hh.ru и Wellfound. Matcher, review-UI, автоотклик — в следующих фазах.
 
 ## Стек
 
 - **React Router v7** (framework mode) + Vite + TypeScript strict
 - **SQLite** через **better-sqlite3** + **Drizzle ORM** (реляционный query API, миграции)
 - **Zod** для валидации окружения
+- **Camoufox** (модифицированный Firefox, FingerprintForge на уровне движка) для сбора
+  вакансий — анти-детект нативно, обходит Cloudflare-бот-детект
+- **cheerio** для парсинга HTML
 - **Vitest** + Testing Library для тестов
 
 ## Быстрый старт (< 5 минут)
@@ -19,22 +24,35 @@
 Требуется **Node.js 22+** (проверено на 24).
 
 ```bash
-# 1. Установить зависимости
+# 1. Установить JS-зависимости
 npm install
 
-# 2. Настроить окружение
-cp .env.example .env
-#   (в bootstrap все ключи опциональны — можно оставить как есть)
+# 2. Установить Python-bridge (Camoufox launcher)
+#    Требуется uv (https://docs.astral.sh/uv/) и Python 3.12+
+cd python-bridge && uv sync && cd ..
+uv run --project python-bridge python -m camoufox fetch   # скачать Firefox (~1 GB, один раз)
 
-# 3. Сгенерировать и применить миграции БД
+# 3. Настроить окружение
+cp .env.example .env
+
+# 4. Сгенерировать и применить миграции БД
 npm run db:generate
 npm run db:migrate
 
-# 4. Запустить dev-сервер
+# 5. Запустить dev-сервер
 npm run dev
 ```
 
 Откройте http://localhost:5173 — увидите дашборд со статусом `status: ok`.
+
+> **Camoufox через Python-bridge:** сбор вакансий использует модифицированный Firefox
+> (Camoufox, FingerprintForge на уровне движка). Node spawn'ит Python-сервер
+> (`uv run python python-bridge/serve.py`), который запускает браузер и отдаёт
+> WebSocket endpoint для подключения через `firefox.connect()`. Это обходит
+> Cloudflare bot-detect, на котором падал обычный Playwright/Chromium.
+>
+> **Cloudflare по IP:** если `wellfound:login` всё равно получает «Access
+> temporarily restricted» — запустите под VPN.
 
 ## Команды
 
@@ -48,6 +66,13 @@ npm run dev
 | `npm run test:watch` | Тесты в watch-режиме                                  |
 | `npm run db:generate`| Генерация SQL-миграций из `app/db/schema.ts`          |
 | `npm run db:migrate` | Применение миграций к SQLite                          |
+| `npm run hh:seed`    | Создать source + profile для hh.ru в БД               |
+| `npm run hh:login`   | Ручной логин на hh.ru (headed Camoufox, куки персист.) |
+| `npm run hh:collect` | Сбор вакансий с hh.ru (headless)                      |
+| `npm run hh:stealth-check` | Диагностика fingerprint на bot.sannysoft.com    |
+| `npm run wellfound:seed` | Создать source + profile для Wellfound в БД        |
+| `npm run wellfound:login` | Ручной логин на Wellfound (headed Camoufox)       |
+| `npm run wellfound:collect` | Сбор вакансий с Wellfound (headless)           |
 
 ## Структура
 
