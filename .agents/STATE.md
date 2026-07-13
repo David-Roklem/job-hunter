@@ -1,6 +1,7 @@
 ---
 milestone: 0.1.0
-current_position: camoufox-stealth ВЫПОЛНЕНА — Camoufox через Python-bridge прошёл Cloudflare (wellfound:login успешен); селекторы Wellfound не совпадают с реальностью (отдельная работа); готова фаза 07 (source-telegram) или фикс селекторов
+current_position: НА ПАУЗЕ перед планом wellfound-selectors-fix. Вариант выбран (закрыть открытую нить из camoufox-stealth). БЛОКЕР: нет реального дампа HTML Wellfound для переписки селекторов — существующие фикстуры синтетические (best-guess data-testid, который в реальности отсутствует). ТОЧКА ПРОДОЛЖЕНИЯ: получить дамп (3 варианта рассмотрены — см. ниже), затем soly new wellfound-selectors-fix. Развилка дампа ОТЛОЖЕНА пользователем.
+camoufox-stealth ВЫПОЛНЕНА + влита в master (merge 78578a3, ветки удалены).
 last_updated: 2026-07-13
 ---
 
