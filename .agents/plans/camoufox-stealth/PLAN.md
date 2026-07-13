@@ -1,168 +1,125 @@
 ---
 plan: camoufox-stealth
-type: insert  # между фазой 06 и 07; не отдельная ROADMAP-фаза
-status: planned
+type: insert  # между фазой 06 и 07
+status: in-progress (POC proven, implementation pending)
 created: 2026-07-13
-parent_phase: 06
-trigger: Cloudflare bot-detect заблокировал Playwright/Chromium на Wellfound (см. SUMMARY фазы 06)
+updated: 2026-07-13
+trigger: Cloudflare bot-detect заблокировал Playwright/Chromium на Wellfound (SUMMARY фазы 06)
 must_haves:
   truths:
-    - "Эскалация анти-детекта: переход с Chromium/Playwright на Camoufox (модифицированный Firefox, FingerprintForge на уровне движка C++) как ОБЩИЙ браузер-стек для всех источников (hh + wellfound)."
-    - "Camoufox запускается напрямую: `import { Camoufox } from 'camoufox'` → `Camoufox({data_dir, headless, humanize:true, geoip:true, locale})` возвращает BrowserContext (persistent при наличии data_dir). Эквивалент playwright launchPersistentContext."
-    - "geoip:true — Camoufox сам вычисляет timezone/locale/country по IP и выставляет согласованно. Убирает ручные timezoneId, убирает рассогласование timezone vs IP-геолокации."
-    - "app/hh/stealth.ts УДАЛЯЕТСЯ ПОЛНОСТЬЮ (applyStealth + 5 init-scripts). Camoufox покрывает всё нативно на уровне движка; ручные патчи — Chromium-specific и конфликтуют с fingerprint-генератором."
-    - "app/hh/human.ts ЧАСТИЧНО: humanDelay + humanScroll остаются (поведенческий паттерн, не fingerprint), humanMouseMove убирается (дублирует Camoufox humanize через BrowserForge). humanPretend пересобирается без mousemove."
-    - "Acceptance = реальный smoke ОБЯЗАТЕЛЕН: wellfound:login НЕ блокируется Cloudflare + collect-wellfound собирает >=1 вакансию + hh:login работает. Главный критерий успеха (в отличие от best-effort в фазе 06)."
-    - "Установка: npm-скрипт camoufox:fetch (npx camoufox fetch) скачивает Firefox ~100MB + GeoIP-базу; документация в README. Запуск вручную один раз после npm install."
-    - "Тесты: vi.mock('camoufox') вместо vi.mock('playwright'). Новые тесты createContext (проверка передачи geoip/headless/data_dir) + human (humanMouseMove убран, delay/scroll остались, applyStealth не вызывается). Существующие hh/wellfound collect-тесты обновляются под новый mock."
-    - "app/hh/collect.ts и app/wellfound/collect.ts НЕ МЕНЯЮТСЯ (работают с BrowserContext/Page, не с запуском браузера). Только убрать вызовы humanMouseMove/humanPretend→mousemove."
+    - "Эскалация анти-детекта: Camoufox (модифицированный Firefox, FingerprintForge на уровне движка) как ОБЩИЙ браузер-стек для всех источников (hh + wellfound)."
+    - "Архитектура: CDP/Playwright-server bridge. Python (camoufox@0.4.11, стабилен) запускает Camoufox как Playwright-server (launch_server), печатает wsEndpoint в stdout. Node (JS-playwright) подключается через firefox.connect(ws), сбор/парсинг/фильтр остаются в TS."
+    - "POC ДОКАЗАН end-to-end (2026-07-13): Python-server → firefox.connect → page.goto bot.sannysoft.com → fingerprint {webdriver:false, plugins:5, Firefox/135}. Архитектура работает."
+    - "JS-порт camoufox@0.1.19 ОТВЕРГНУТ: 3 бага (ESM dynamic-require, geoip proxy, viewport protocol skew). Python-порт стабильнее."
+    - "ДВА КРИТИЧНЫХ УСЛОВИЯ: (1) JS-playwright PINNED to 1.50.0 (протокол сошёлся с Python-Camoufox-driver 1.50; 1.61 даёт WS-handshake fail); (2) python-bridge/package.json без type:module (иначе camoufox's launchServer.js CJS заражается ESM-флагом)."
+    - "Spawn-on-demand: Python-процесс стартует перед каждым запуском сбора/логина, закрывается после. uv-окружение в python-bridge/ (uv 0.9.15 уже установлен)."
+    - "app/hh/stealth.ts УДАЛЁН (фаза camoufox-3 уже сделана). human.ts почищен (humanMouseMove убран)."
+    - "Acceptance = реальный smoke ОБЯЗАТЕЛЕН: wellfound:login НЕ блокируется Cloudflare + collect-wellfound собирает >=1 вакансию + hh:login работает."
 ---
 
-# Plan: camoufox-stealth
+# Plan: camoufox-stealth (revised after POC)
 
 Эскалация анти-детекта после Cloudflare-блока Wellfound'а в фазе 06.
-Замена ядра браузерного движка: **Chromium/Playwright → Camoufox (Firefox-based)**
-как общий стек для всех источников. Цель — пройти Cloudflare bot-detect.
+Camoufox (Firefox-based) как общий браузер-стек через **CDP/Playwright-server bridge**:
+Python запускает браузер, Node подключается и собирает.
 
 ## Goal
 
-Перевести `app/browser/session.ts` с `chromium.launchPersistentContext` + ручных
-stealth init-scripts на **Camoufox** (`Camoufox({data_dir, headless, humanize, geoip, locale})`).
-Удалить `app/hh/stealth.ts` целиком, почистить `app/hh/human.ts` (убрать
-`humanMouseMove`). Реальный smoke против Wellfound (login + collect) и hh (login)
-**обязателен** для закрытия плана — это проверка, что эскалация решает bot-detect.
+Связать Python-Camoufox (стабильный) с TS-кодовой базой через Playwright-server
+WebSocket. Заменить прямые вызовы `chromium.launchPersistentContext` в
+`app/browser/session.ts` на spawn Python-сервера + `firefox.connect(wsEndpoint)`.
+Реальный smoke Wellfound (login + collect) и hh (login) обязателен.
 
-## Steps
+## POC findings (уже доказано, 2026-07-13)
 
-### Step 1 — Dependencies + install workflow
-- `npm install camoufox` (npm-пакет `camoufox@^0.1.19`, exposes `Camoufox`, `launchOptions`).
-- Добавить npm-скрипт `"camoufox:fetch": "camoufox fetch"` в `package.json` (скачивает
-  модифицированный Firefox ~100MB + GeoIP-базу MaxMind; требуется один раз после install).
-- НЕ postinstall-хук (явный скрипт — предсказуемо, не замедляет каждый install).
-- **Smoke-действие в этой сессии:** запустить `npm run camoufox:fetch` → убедиться, что
-  Firefox скачался в кеш Camoufox. Если не качается (РФ-сеть) — fallback: запустить под VPN.
-- Commit: `feat(camoufox-1): add camoufox dep + camoufox:fetch script`.
+- Python `camoufox.server.launch_server(**kwargs)` печатает `ws://localhost:PORT/HASH`.
+- JS `firefox.connect(ws)` подключается, открывает страницы, fingerprint правдоподобен.
+- **Условие 1:** JS-playwright должен быть **1.50.0** (1.61 → WS-handshake fail, protocol skew).
+- **Условие 2:** `python-bridge/package.json` нужен без `type:module` (camoufox's launchServer.js — CJS).
+- Архитектура end-to-end работает: `webdriver:false, plugins:5, Firefox/135`.
 
-### Step 2 — Rewrite `app/browser/session.ts`
-- Заменить импорт: `import { chromium } from "playwright"` → `import { Camoufox } from "camoufox"`.
-- Убрать импорт `applyStealth` из `~/hh/stealth`.
-- Убрать `DESKTOP_UA` (Camoufox сам генерирует fingerprint с UA через BrowserForge).
-- Убрать `VIEWPORTS`/`randomViewport` (Camoufox генерирует screen/window из fingerprint).
+## Already done (на ветке camoufox-stealth)
+
+- ✅ Шаги 1-6 (JS-порт подход) реализованы, 94/94 тестов зелёные.
+- ✅ `app/hh/stealth.ts` удалён, `human.ts` почищен.
+- ✅ `app/browser/session.ts` переписан (сейчас через JS-Camoufox-wrapper — БУДЕТ ЗАМЕНЁН на Python-bridge).
+- ✅ README, package.json (`camoufox:fetch`), тесты — обновятся.
+
+## Steps (revised)
+
+### Step A — Python-bridge infrastructure
+- `python-bridge/pyproject.toml` (uv, уже создано): `camoufox@0.4.11`, `playwright==1.50.*` (pin!).
+- `python-bridge/package.json`: `{"name":"python-bridge-runner","private":true}` — НЕ type:module (фикс условия 2).
+- `python-bridge/serve.py`: argparse (--profile, --headed, --locale), вызывает `launch_server()`.
+  Выводит wsEndpoint в stdout в машино-читаемом формате (`WSENDPOINT: ws://...`) для парсинга из Node.
+- `.gitignore`: игнорировать `python-bridge/.venv/`, `python-bridge/uv.lock` (или коммитить lock? — решить).
+- Commit: `feat(camoufox-A): python-bridge (uv + serve.py + launch_server)`.
+
+### Step B — Node-side launcher (spawn + wsEndpoint parse)
+- Новый `app/browser/launcher.ts`:
+  - `launchCamoufoxServer({profileDir, headed, locale}): Promise<{wsEndpoint, stop}>`
+  - spawn: `uv run python python-bridge/serve.py --profile ... --headed ... --locale ...`
+  - читает stdout, ждёт строку `WSENDPOINT: <ws>`, возвращает wsEndpoint
+  - `stop()`: kill процесса Python + дочерних (browser close)
+  - cwd = `python-bridge/` (условие 2)
+- Commit: `feat(camoufox-B): Node launcher (spawn uv + parse wsEndpoint)`.
+
+### Step C — Rewrite `app/browser/session.ts` (Camoufox → Python-bridge)
 - `createContext({profileDir, headed, locale})`:
-  ```ts
-  const ctx = await Camoufox({
-    data_dir: opts.profileDir,        // persistent context (наш profileDir)
-    headless: !opts.headed,            // дефолт false → Camoufox headed по умолчанию
-    humanize: true,                    // реалистичные движения курсора (BrowserForge)
-    geoip: true,                       // авто timezone/locale/country по IP
-    locale: opts.locale,               // языковой интерфейс (ru-RU для hh, en-US для wellfound)
-  });
-  return ctx as BrowserContext;
-  ```
-- **Убрать `timezone` из `CreateContextOptions`** — больше не нужен (`geoip:true` берёт на себя).
-  Обёртки `app/hh/session.ts`/`app/wellfound/session.ts` перестают передавать `timezone`.
-- `isLoggedIn` не меняется.
-- Commit: `feat(camoufox-2): rewrite createContext to use Camoufox (geoip + humanize)`.
+  1. `const { wsEndpoint, stop } = await launchCamoufoxServer(opts)`
+  2. `const browser = await firefox.connect(wsEndpoint)`
+  3. вернуть обёртку: `{ newPage: () => browser.contexts[0]?.newPage() || ctx.newPage(), close: stop }`
+     (контракт BrowserContext)
+- убрать старый JS-Camoufox-wrapper (`app/browser/camoufox.ts`) — больше не нужен.
+- PIN JS-playwright to 1.50.0 в package.json (замена ^1.61.1).
+- Commit: `feat(camoufox-C): createContext via Python-bridge (firefox.connect)`.
 
-### Step 3 — Delete `app/hh/stealth.ts`, clean `app/hh/human.ts`
-- **Удалить `app/hh/stealth.ts`** целиком (applyStealth + maskWebDriver + maskChromeRuntime
-  + maskNavigatorProps + maskWebGL + maskPermissions). Camoufox покрывает нативно.
-- **`app/hh/human.ts`:**
-  - Оставить: `humanDelay`, `humanScroll`.
-  - **Удалить: `humanMouseMove`.**
-  - Пересобрать `humanPretend`: `humanScroll` + `humanDelay` (без mousemove).
-- Проверить потребителей: `grep -rn "humanMouseMove\|humanPretend\|applyStealth" app/ scripts/`.
-  - `app/hh/collect.ts`, `app/wellfound/collect.ts`: заменить `humanPretend` на пересобранный
-    (без mousemove), убрать прямые `humanMouseMove`.
-- Commit: `refactor(camoufox-3): delete stealth.ts, prune human.ts (remove humanMouseMove)`.
+### Step D — Tests update
+- `tests/browser-session.test.ts`: переписать под новую архитектуру.
+  Мокать `~/browser/launcher` (launchCamoufoxServer) и `playwright/firefox` (connect).
+  Проверять: createContext вызывает launcher с правильными опциями, вызывает firefox.connect(ws).
+- `tests/browser-launcher.test.ts`: мокать child_process.spawn, проверять парсинг WSENDPOINT, kill на stop.
+- Существующие collect-тесты (мокают `~/hh/session`) — не меняются.
+- Commit: `test(camoufox-D): rewrite browser-session tests + add launcher tests`.
 
-### Step 4 — Update source session wrappers
-- `app/hh/session.ts`: убрать `timezone: "Europe/Moscow"` из вызова `createContext`
-  (geoip берёт на себя). `locale: "ru-RU"` оставить (русский интерфейс hh).
-- `app/wellfound/session.ts`: убрать `timezone: "America/New_York"`. `locale: "en-US"` оставить.
-- `CreateContextOptions.timezone` удалить из типа (Step 2).
-- Commit: `refactor(camoufox-4): drop manual timezone from hh/wellfound sessions (geoip)`.
+### Step E — README + package.json cleanup
+- README: шаг `uv sync` в python-bridge/ вместо (или вместе с) `camoufox:fetch`.
+- Убрать `camoufox:fetch` npm-скрипт (это было для JS-порта; Python сам тянет браузер).
+- Убрать dep `camoufox` (JS) из package.json.
+- Commit: `docs(camoufox-E): README + package.json cleanup (Python-bridge setup)`.
 
-### Step 5 — Update tests (mocks)
-- **`tests/hh-collect.test.ts`, `tests/wellfound-collect.test.ts`:**
-  - `vi.mock("playwright", ...)` → `vi.mock("camoufox", ...)` если мокается на уровне session,
-    ИЛИ оставить мок `~/browser/session` (как сейчас) — проверить, какой уровень мокается.
-  - Мок `createContext` возвращает тот же fake `{ newPage, close }` (контракт не изменился).
-- **Новый `tests/browser-session.test.ts`:**
-  - `vi.mock("camoufox")` → проверить, что `createContext` вызывает `Camoufox` с правильными
-    опциями: `data_dir` = переданный profileDir, `headless` = `!headed`, `humanize: true`,
-    `geoip: true`, `locale` передан.
-  - Проверить ошибку при пустом `profileDir`.
-- **Новый/расширенный `tests/hh-human.test.ts`:**
-  - `humanMouseMove` НЕ экспортируется (убран).
-  - `humanDelay`, `humanScroll`, `humanPretend` экспортируются и работают.
-- **Проверить:** `grep -rn "applyStealth\|stealth" tests/` — тестов на stealth не должно
-  остаться (если были — удалить вместе с файлом).
-- Commit: `test(camoufox-5): mock camoufox in collect tests; add session+human tests`.
-
-### Step 6 — README: install instructions
-- Секция «Установка» / «First run»: после `npm install` выполнить `npm run camoufox:fetch`
-  (скачивает браузер). Без этого `npm run wellfound:login` / `hh:login` упадут с ошибкой
-  «browser not found».
-- Упомянуть: для обхода Cloudflare при РФ-IP — запуск под VPN (Camoufox + geoip берёт IP
-  шлюза, fingerprint сходится).
-- Commit: `docs(camoufox-6): README — camoufox:fetch install step + VPN note`.
-
-### Step 7 — Manual smoke (ACCEPTANCE GATE, обязательно)
-Это главный критерий успеха плана. Запускается вручную в этой сессии.
-
-1. `npm run camoufox:fetch` → Firefox скачан.
-2. `npm run wellfound:login` → открыть headed Camoufox, залогиниться вручную.
-   - **УСПЕХ:** нет страницы «Access is temporarily restricted / bot activity».
-   - **ПРОВАЛ:** если Cloudflare снова блокирует → план НЕ закрыт, разбираемся
-     (возможно: VPN обязателен, или нужны Camoufox-опции `addons`/`proxy`).
-3. `npm run wellfound:collect -- --source=2 --profile=2 --max=3` → headless сбор.
-   - **УСПЕХ:** >=1 вакансия в БД (`SELECT count(*) FROM vacancies WHERE source_id=2`).
-   - При расхождении селекторов — правка `app/wellfound/selectors.ts` + фикстуры.
-4. `npm run hh:login` → повторить для hh (убедиться, что Camoufox не сломал рабочий hh).
-5. Все автотесты зелёные: `npm test && npm run typecheck`.
-- Если smoke пройден → SUMMARY + STATE/ROADMAP (вставить строку про camoufox-stealth
-  между фазой 06 и 07). Если нет — зафиксировать в SUMMARY как blocker, НЕ закрывать план.
+### Step F — Manual smoke (ACCEPTANCE GATE)
+1. `cd python-bridge && uv sync && cd ..` — Python-окружение готово.
+2. `npm run wellfound:login` → spawn Python-Camoufox, firefox.connect, headed браузер.
+   УСПЕХ: нет «bot activity», залогинился.
+3. `npm run wellfound:collect -- --source=2 --profile=2 --max=3` → headless сбор, >=1 вакансия.
+4. `npm run hh:login` → повтор для hh.
+5. `npm test && npm run typecheck` зелёные.
 
 ## Acceptance
 
-- [ ] `camoufox` в `package.json` deps, `camoufox:fetch` скрипт работает (браузер скачан).
-- [ ] `app/browser/session.ts` использует `Camoufox({data_dir, headless, humanize:true, geoip:true, locale})`, `applyStealth` не вызывается.
-- [ ] `app/hh/stealth.ts` удалён, `grep -rn applyStealth app/` пуст.
-- [ ] `app/hh/human.ts`: `humanMouseMove` убран, `humanDelay`/`humanScroll`/`humanPretend` остались.
-- [ ] `timezone` убран из `CreateContextOptions` и из hh/wellfound session wrappers.
-- [ ] `app/hh/collect.ts` + `app/wellfound/collect.ts` работают без `humanMouseMove`.
-- [ ] `npm test` зелёные (старые тесты обновлены под мок camoufox + новые session/human тесты).
-- [ ] `npm run typecheck` чистый.
-- [ ] README описывает `camoufox:fetch` + VPN-заметку.
-- [ ] **ГЛАВНОЕ — реальный smoke:**
-  - `wellfound:login` не блокируется Cloudflare (нет «bot activity» страницы),
-  - `collect-wellfound` собирает >=1 вакансию в БД,
-  - `hh:login` работает (Camoufox не сломал hh).
+- [ ] `python-bridge/serve.py` через `launch_server()` печатает wsEndpoint.
+- [ ] `app/browser/launcher.ts` spawn'ит uv, парсит wsEndpoint, корректно kill'ит.
+- [ ] `app/browser/session.ts` createContext → launcher + firefox.connect.
+- [ ] JS-playwright pinned 1.50.0 (protocol match).
+- [ ] `python-bridge/package.json` без type:module.
+- [ ] `app/browser/camoufox.ts` (JS-wrapper) удалён.
+- [ ] `app/hh/stealth.ts` удалён (уже), `human.ts` почищен (уже).
+- [ ] 94+ тестов зелёные, typecheck чистый.
+- [ ] **ГЛАВНОЕ — smoke:** wellfound login+collect (>=1 вакансия), hh login.
 
 ## Risks
 
-1. **Cloudflare всё равно блокирует Camoufox** — главный риск. Если `geoip:true` +
-   humanize недостаточно: добавить `addons: [DefaultAddons.UBO]` (uBlock Origin —
-   режет ads/трекеры, меняет fingerprint-поверхность) или `proxy` (VPN обязателен).
-   Worst case: Camoufox + Cloudflare проигрывает → пробовать patchright (Chromium drop-in)
-   или отложить smoke до proxy-инфраструктуры.
-2. **`camoufox:fetch` не качается в РФ-сети** — Firefox-бинарник и MaxMind GeoIP
-   тянутся с зарубежных хостов. Fallback: запустить под VPN один раз (браузер кешируется).
-3. **Camoufox API несовместим** — пакет `camoufox@0.1.19` молодой (2 stars, обновлён
-   2025-12). Если `Camoufox()` ведёт себя не как ожидается → fallback на `launchOptions()`
-   + `firefox.launchPersistentContext` из playwright-core (см. CONTEXT.md, deferred).
-4. **locale vs geoip конфликт** — мы передаём `locale:"ru-RU"` для hh, но `geoip:true`
-   может отдать другой locale по IP. Проверить в smoke: если Camoufox игнорирует наш locale
-   при geoip — оставить только geoip (решить эмпирически).
-5. **Существующие hh-тесты падают** — мок playwright был завязан на `chromium`. После
-   замены на мок camoufox контракт `createContext → BrowserContext` тот же, но проверить
-   все 5 hh-collect + 7 wellfound-collect тестов.
+1. **uv sync на CI/другой машине** — uv должен быть предустановлен. Документировать в README.
+2. **Windows path with кириллица/пробелы** (Рабочий стол) — uv/node spawn должен это пережить.
+   POC работал из `python-bridge/` (поддиректория с пробелом в пути) — обнадёживает.
+3. **firefox.connect vs launchPersistentContext** — connect создаёт новый context, не persistent.
+   Для персистентности куки: либо Camoufox's data_dir (Python-side) + Node переподключается,
+   либо вручную storageState. Проверить в шаге C/F.
+4. **Жизненный цикл browser/context** — при connect() context управляется сервером. close() behaviour отличается от launchPersistentContext. Уточнить в шаге C.
 
 ## Out of scope
 
-- Camoufox `launchServer` (websocket-сервер) — single-user локально, не нужно.
-- BrowserForge кастомные fingerprints — избыточно, geoip+random достаточно.
-- Proxy-ротация — сейчас системный VPN. Отдельная задача, если понадобится.
-- `block_images`/`block_webgl` оптимизации — не сейчас.
-- Фаза 07 (source-telegram) — следующий план после этого.
+- uv.lock коммитить или нет — решить в шаге A (recommended: коммитить для воспроизводимости).
+- Python-код запускается только через uv run (не venv-activate) — единая точка входа.
+- Фаза 07 (source-telegram) — следующий план.
