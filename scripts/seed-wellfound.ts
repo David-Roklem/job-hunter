@@ -22,10 +22,12 @@ async function main(): Promise<void> {
   console.log("=== seed wellfound source + profile ===\n");
 
   // Source: find-or-create по имени. kind=aggregator (новое значение из фазы 06).
+  // create() возвращает Source (с config_json), а для чтения config как объекта
+  // ниже — нужен DTO. Поэтому после create перечитываем через findById.
   const sources = sourcesRepo.list();
   let source = sources.find((s) => s.name === SOURCE_NAME);
   if (!source) {
-    source = sourcesRepo.create({
+    const created = sourcesRepo.create({
       kind: "aggregator",
       name: SOURCE_NAME,
       config: {
@@ -35,6 +37,8 @@ async function main(): Promise<void> {
         remote_only: true,
       },
     });
+    source = sourcesRepo.findById(created.id);
+    if (!source) throw new Error("source create failed");
     console.log(
       `✓ создан source id=${source.id} (kind=aggregator, name="${SOURCE_NAME}")`,
     );
