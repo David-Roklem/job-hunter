@@ -15,7 +15,10 @@
     "hh:login": "tsx scripts/hh-login.ts",
     "hh:collect": "tsx scripts/collect-hh.ts",
     "hh:seed": "tsx scripts/seed-hh.ts",
-    "hh:stealth-check": "tsx scripts/stealth-check.ts"
+    "hh:stealth-check": "tsx scripts/stealth-check.ts",
+    "wellfound:seed": "tsx scripts/seed-wellfound.ts",
+    "wellfound:login": "tsx scripts/wellfound-login.ts",
+    "wellfound:collect": "tsx scripts/collect-wellfound.ts"
   },
   "dependencies": {
     "@react-router/node": "^8.1.0",
