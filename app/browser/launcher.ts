@@ -63,11 +63,12 @@ export function launchCamoufoxServer(
 
     let child: ChildProcess;
     try {
+      // Без shell:true — с shell args не экранируются, и пути с пробелами/
+      // кириллицей (Рабочий стол) разбиваются/ломают кодировку. uv должен быть в PATH.
       child = spawn("uv", args, {
         cwd: bridgeDir,
         stdio: ["ignore", "pipe", "pipe"],
         windowsHide: true,
-        shell: process.platform === "win32",
       });
     } catch (e) {
       reject(
