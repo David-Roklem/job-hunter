@@ -1,17 +1,22 @@
 # job_hunter
 
-Персональный локальный помощник поиска работы на российском рынке.
-Собирает вакансии из hh.ru, сайтов компаний и Telegram-каналов, сопоставляет
+Персональный локальный помощник поиска работы на **международном и зарубежном рынке**
+(с сохранением российского рынка через hh.ru). Собирает вакансии из hh.ru,
+международных агреггаторов (Wellfound) и сайтов компаний, сопоставляет
 с несколькими версиями резюме, готовит черновики откликов и сопроводительных
-писем через Yandex GPT — человек только подтверждает.
+писем через AI — человек только подтверждает.
 
-> **Статус:** bootstrap + data-модель. Сбор источников, matcher, AI-генерация — в следующих фазах.
+> **Статус:** bootstrap + data-модель + resume-templates + AI-провайдер (z.ai) +
+> сборщики hh.ru и Wellfound. Matcher, review-UI, автоотклик — в следующих фазах.
 
 ## Стек
 
 - **React Router v7** (framework mode) + Vite + TypeScript strict
 - **SQLite** через **better-sqlite3** + **Drizzle ORM** (реляционный query API, миграции)
 - **Zod** для валидации окружения
+- **Camoufox** (модифицированный Firefox, FingerprintForge на уровне движка) для сбора
+  вакансий — анти-детект нативно, обходит Cloudflare-бот-детект
+- **cheerio** для парсинга HTML
 - **Vitest** + Testing Library для тестов
 
 ## Быстрый старт (< 5 минут)
@@ -22,19 +27,27 @@
 # 1. Установить зависимости
 npm install
 
-# 2. Настроить окружение
+# 2. Скачать браузер Camoufox (~1 GB, один раз) — нужен для сбора вакансий
+npm run camoufox:fetch
+
+# 3. Настроить окружение
 cp .env.example .env
 #   (в bootstrap все ключи опциональны — можно оставить как есть)
 
-# 3. Сгенерировать и применить миграции БД
+# 4. Сгенерировать и применить миграции БД
 npm run db:generate
 npm run db:migrate
 
-# 4. Запустить dev-сервер
+# 5. Запустить dev-сервер
 npm run dev
 ```
 
 Откройте http://localhost:5173 — увидите дашборд со статусом `status: ok`.
+
+> **Cloudflare-бот-детект:** Wellfound (и другие зарубежные площадки) детектят
+> автоматизацию по IP. Если `wellfound:login` получает страницу «Access
+> temporarily restricted» — запустите под VPN: Camoufox `geoip:true` возьмёт
+> IP шлюза и сгенерирует согласованный fingerprint автоматически.
 
 ## Команды
 
@@ -48,6 +61,14 @@ npm run dev
 | `npm run test:watch` | Тесты в watch-режиме                                  |
 | `npm run db:generate`| Генерация SQL-миграций из `app/db/schema.ts`          |
 | `npm run db:migrate` | Применение миграций к SQLite                          |
+| `npm run camoufox:fetch` | Скачать браузер Camoufox (~1 GB, один раз)        |
+| `npm run hh:seed`    | Создать source + profile для hh.ru в БД               |
+| `npm run hh:login`   | Ручной логин на hh.ru (headed Camoufox, куки персист.) |
+| `npm run hh:collect` | Сбор вакансий с hh.ru (headless)                      |
+| `npm run hh:stealth-check` | Диагностика fingerprint на bot.sannysoft.com    |
+| `npm run wellfound:seed` | Создать source + profile для Wellfound в БД        |
+| `npm run wellfound:login` | Ручной логин на Wellfound (headed Camoufox)       |
+| `npm run wellfound:collect` | Сбор вакансий с Wellfound (headless)           |
 
 ## Структура
 
