@@ -11,11 +11,20 @@
  *
  * Это ручной шаг (как hh:login/wellfound:login) — в автотестах не вызывается.
  */
+import { loadEnv } from "./_env";
+
+// ДОЛЖНО быть раньше любого импорта app/* (env.server.ts парсит process.env
+// при первом импорте; loadEnv() заполняет process.env из .env). Статический
+// import { env } убил бы это — env вычислился бы до loadEnv.
+loadEnv();
+
 import * as readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
-import { env } from "../app/env.server";
 import { TelegramClient } from "telegram";
 import { StringSession } from "telegram/sessions";
+
+// Теперь .env загружен в process.env — можно читать env.
+const { env } = await import("../app/env.server");
 
 async function prompt(rl: readline.Interface, question: string): Promise<string> {
   const answer = await rl.question(question);
