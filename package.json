@@ -23,6 +23,7 @@
     "telegram:login": "tsx scripts/telegram-login.ts",
     "telegram:seed": "tsx scripts/seed-telegram.ts",
     "telegram:collect": "tsx scripts/collect-telegram.ts",
+    "telegram:fix-exclude": "tsx scripts/fix-telegram-exclude.ts",
     "vacancies:list": "tsx scripts/list-vacancies.ts"
   },
   "dependencies": {
