@@ -22,7 +22,8 @@
     "wellfound:dump": "tsx scripts/dump-wellfound-html.ts",
     "telegram:login": "tsx scripts/telegram-login.ts",
     "telegram:seed": "tsx scripts/seed-telegram.ts",
-    "telegram:collect": "tsx scripts/collect-telegram.ts"
+    "telegram:collect": "tsx scripts/collect-telegram.ts",
+    "vacancies:list": "tsx scripts/list-vacancies.ts"
   },
   "dependencies": {
     "@react-router/node": "^8.1.0",

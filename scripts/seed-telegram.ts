@@ -29,9 +29,19 @@ const PROFILE_NAME = "Backend (Telegram)";
  * русскоязычных IT-каналов вакансий. РАСКОММЕНТИРУЙТЕ нужные или впишите свои.
  */
 const CHANNEL_USERNAMES: Array<{ username: string; title?: string }> = [
-  // { username: "jobs_in_it", title: "Jobs in IT" },
-  // { username: "forwebdev_jobs", title: "ForWebDev Jobs" },
-  // { username: " vacancy_channel", title: "..." },  // ← пример
+  { username: "p_rabota", title: "Python Вакансии Junior/Middle" },
+  { username: "geekjobs", title: "Job in IT&Digital" },
+  { username: "remotegeekjob", title: "RemoteGeekjob" },
+
+  { username: "forpython", title: "Job for Python" },
+  { username: "it_vakansii_jobs", title: "СЕТИ — IT & Digital вакансии" },
+  { username: "sparklesjobs", title: "Секретные вакансии в IT и Digital — Sparkles" },
+  { username: "zarubezhom_jobs", title: "Connectable Jobs" },
+
+  { username: "Getitrussia", title: "Get IT" },
+  { username: "Relocats", title: "IT Relocation (Inflow)" },
+  { username: "jobs_juniors_remote", title: "Авоська — junior IT вакансии/cтажировки" },
+  { username: "it_jobs_remote", title: "IT вакансии (релокейт, удалёнка)" },
 ];
 
 async function main(): Promise<void> {
