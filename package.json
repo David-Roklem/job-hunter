@@ -19,7 +19,10 @@
     "wellfound:seed": "tsx scripts/seed-wellfound.ts",
     "wellfound:login": "tsx scripts/wellfound-login.ts",
     "wellfound:collect": "tsx scripts/collect-wellfound.ts",
-    "wellfound:dump": "tsx scripts/dump-wellfound-html.ts"
+    "wellfound:dump": "tsx scripts/dump-wellfound-html.ts",
+    "telegram:login": "tsx scripts/telegram-login.ts",
+    "telegram:seed": "tsx scripts/seed-telegram.ts",
+    "telegram:collect": "tsx scripts/collect-telegram.ts"
   },
   "dependencies": {
     "@react-router/node": "^8.1.0",
@@ -33,6 +36,7 @@
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-router": "^8.1.0",
+    "telegram": "^2.26.22",
     "zod": "^4.4.3"
   },
   "devDependencies": {

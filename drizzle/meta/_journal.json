@@ -15,6 +15,13 @@
       "when": 1783688617910,
       "tag": "0001_supreme_cannonball",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1784024746938,
+      "tag": "0002_colossal_forge",
+      "breakpoints": true
     }
   ]
 }
