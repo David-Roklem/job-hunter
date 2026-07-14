@@ -1,6 +1,6 @@
 ---
 milestone: 0.1.0
-current_position: Фаза 07 (source-telegram) ВЫПОЛНЕНА на ветке source-telegram. Автотесты 162/162 (было 99), tsc чистый. РУЧНОЙ SMOKE PENDING: нужен TG_API_ID/TG_API_HASH (my.telegram.org) + npm run telegram:login (интерактивный) → TG_SESSION в .env → telegram:seed (каналы) → telegram:collect. ТОЧКА ПРОДОЛЖЕНИЯ: ручной smoke telegram, затем ROADMAP фаза 08 (matcher) или 09 (draft-generator). Wellfound ОТЛОЖЕН (блок по IP — Camoufox не помогает, нужен прокси, отложено пользователем).
+current_position: Фаза 07 (source-telegram) ВЫПОЛНЕНА + ВЛИТА в master (merge 1eb46bb, ветки удалены). Автотесты 162/162, tsc чистый. Smoke на реальных данных: 6 каналов, 150 вакансий, 73 matched, AI-зарплата поймала 208-272k RUB. ТОЧКА ПРОДОЛЖЕНИЯ: ROADMAP фаза 08 (matcher — скоринг 73 собранных вакансий) или 09 (draft-generator). Wellfound ОТЛОЖЕН (блок по IP, дампер в master, лечится прокси — отложено пользователем).
 camoufox-stealth ВЫПОЛНЕНА + влита в master (merge 78578a3).
 last_updated: 2026-07-14
 ---
