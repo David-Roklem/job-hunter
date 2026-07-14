@@ -1,8 +1,8 @@
 ---
 milestone: 0.1.0
-current_position: НА ПАУЗЕ перед планом wellfound-selectors-fix. Вариант выбран (закрыть открытую нить из camoufox-stealth). БЛОКЕР: нет реального дампа HTML Wellfound для переписки селекторов — существующие фикстуры синтетические (best-guess data-testid, который в реальности отсутствует). ТОЧКА ПРОДОЛЖЕНИЯ: получить дамп (3 варианта рассмотрены — см. ниже), затем soly new wellfound-selectors-fix. Развилка дампа ОТЛОЖЕНА пользователем.
-camoufox-stealth ВЫПОЛНЕНА + влита в master (merge 78578a3, ветки удалены).
-last_updated: 2026-07-13
+current_position: Wellfound ОТЛОЖЕН. Блок по IP 202.148.55.56 — Camoufox (меняет fingerprint, но не IP) не помогает; лечится только прокси (residential/mobile), решение ОТЛОЖЕНО пользователем. Дампер готов (scripts/dump-wellfound-html.ts, npm run wellfound:dump). ТОЧКА ПРОДОЛЖЕНИЯ: когда будет выбран/подключён прокси → вписать WF_PROXY в .env → повторить дамп (headed) → правка selectors.ts/parsers.ts под реальный HTML. Ветка wellfound-selectors-fix оставлена с дампером, можно вернуться. СЛЕДУЮЩАЯ работа по roadmap: фаза 07 (source-telegram) или 08 (matcher) — на выбор пользователя.
+camoufox-stealth ВЫПОЛНЕНА + влита в master (merge 78578a3).
+last_updated: 2026-07-14
 ---
 
 # Project state — job_hunter
@@ -46,4 +46,7 @@ Use `/soly` to see current state. Use `/plan N` to plan phase N.
 | 2026-07-13 | playwright pinned 1.50.0 (JS + Python) — протокольный матч для firefox.connect. | Эмпирическая находка POC: 1.61 даёт WS-handshake fail (version skew с Camoufox-driver). Зафиксировано в обоих манифестах. | camoufox-stealth |
 | 2026-07-13 | python-bridge/package.json БЕЗ type:module — иначе camoufox's launchServer.js (CJS) заражается корневым ESM-флагом. | Эмпирическая находка: launch_server валился с require-is-not-defined из-за апстрим package.json type:module. | camoufox-stealth |
 | 2026-07-13 | Селекторы Wellfound (data-testid) НЕ совпадают с реальностью — переносится в отдельную работу. camoufox-stealth закрыт на главной цели (Cloudflare пройден). | Smoke нашёл: data-testid нет, карточки на Tailwind + a[href*=/jobs/]. Пользователь решил не раздувать stealth-фазу фиксом парсеров. | camoufox-stealth |
+| 2026-07-14 | Дампер Wellfound (scripts/dump-wellfound-html.ts, npm run wellfound:dump) — Camoufox-съём отрендеренного HTML (search + N детальных) в data/dumps/. Готов, ждёт возможности пройти блок. | Нужен реальный HTML для правки selectors.ts/parsers.ts (синтетические фикстуры — гадание). | wellfound-selectors-fix |
+| 2026-07-14 | КОРРЕКЦИЯ camoufox-stealth: Wellfound блокирует по IP (DataDome + «Access restricted IP 202.148.55.56»), не по fingerprint. Camoufox НЕ обходит это — он меняет fingerprint, но не IP. Утверждение SUMMARY «Cloudflare пройден, collect работает» верно только для headed+залогиненного, и то временно. | Дамп headless (2026-07-14) показал DataDome interstitial; headed повтор дал тот же IP-блок. Блок персистентен по IP с фазы 06. Лечится ТОЛЬКО прокси (residential/mobile) + geoip sync в Camoufox. | wellfound-selectors-fix |
+| 2026-07-14 | Прокси для Wellfound ОТЛОЖЕН пользователем. Запланированное: WF_PROXY env → serve.py launch_server(proxy, geoip=True), только Wellfound (hh на прямом соединении). Camoufox API подтверждён context7 (daijro/camoufox, 2026-06): launch_server принимает proxy в Playwright-формате. | Пользователь передумал после выбора «прокси в стек» — не готов к выбору/оплате прокси-сервиса. Wellfound заморожен до решения по сети. Дампер и ветка сохранены. | wellfound-selectors-fix |
 | 2026-07-08 | Initial scaffold | Created by `soly init` |
