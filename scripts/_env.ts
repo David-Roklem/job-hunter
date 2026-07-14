@@ -31,7 +31,16 @@ export function loadEnv(): void {
     const eq = trimmed.indexOf("=");
     if (eq === -1) continue;
     const key = trimmed.slice(0, eq).trim();
-    const val = trimmed.slice(eq + 1).trim();
+    let val = trimmed.slice(eq + 1).trim();
+    // Обрамляющие кавычки (стандартный dotenv): 'value' или "value" → value.
+    // Без этого TG_SESSION='...' сохранял кавычки как часть значения,
+    // и gramjs StringSession падал с «Not a valid string».
+    if (
+      (val.startsWith('"') && val.endsWith('"')) ||
+      (val.startsWith("'") && val.endsWith("'"))
+    ) {
+      val = val.slice(1, -1);
+    }
     if (!(key in process.env)) process.env[key] = val;
   }
 }

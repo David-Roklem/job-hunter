@@ -26,7 +26,14 @@ const EnvSchema = z.object({
     .string()
     .default("https://api.z.ai/api/coding/paas/v4"),
   YANDEX_GPT_API_KEY: z.string().optional(),
-  TELEGRAM_BOT_TOKEN: z.string().optional(),
+
+  // Telegram-источник (фаза 07). MTProto через gramjs (user-аккаунт),
+  // НЕ Bot API. api_id/api_hash бесплатно на https://my.telegram.org → API development tools.
+  // TG_SESSION — строка StringSession после `npm run telegram:login` (пусто = не залогинен).
+  // Опциональны: telegram-функциональность недоступна без них, но приложение/тесты работают.
+  TG_API_ID: z.coerce.number().optional(),
+  TG_API_HASH: z.string().optional(),
+  TG_SESSION: z.string().default(""),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

@@ -151,6 +151,39 @@ export const searchProfiles = sqliteTable("search_profiles", {
   ...timestamps,
 });
 
+/**
+ * Telegram-канал-источник вакансий (фаза 07).
+ *
+ * Один source (kind="telegram") связан со МНОГИМИ каналами: один source может
+ * собирать из нескольких @username-каналов (типичная картина — 5–10 каналов
+ * вакансий в одном профиле критериев).
+ *
+ * last_message_id — курсор последнего прочитанного поста (идемпотентный
+ * повторный сбор: getMessages с minId=last_message_id). 0 = канал ещё не читали.
+ *
+ * Только публичные каналы (@username). Приватные (инвайт-ссылки) — out-of-scope.
+ */
+export const telegramChannels = sqliteTable(
+  "telegram_channels",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    source_id: integer("source_id")
+      .notNull()
+      .references(() => sources.id, { onDelete: "cascade" }),
+    // username без ведущего "@" (github-style). Уникален — один канал = одна строка.
+    username: text("username").notNull().unique(),
+    // Отображаемое имя канала (необязательно;gramjs его отдает).
+    title: text("title"),
+    // Курсор последнего прочитанного поста. 0 = не читали.
+    last_message_id: integer("last_message_id").notNull().default(0),
+    is_active: integer("is_active", { mode: "boolean" })
+      .notNull()
+      .default(true),
+    ...timestamps,
+  },
+  (table) => [index("telegram_channels_source_id_idx").on(table.source_id)],
+);
+
 /** Компания-работодатель. */
 export const companies = sqliteTable("companies", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -328,10 +361,18 @@ export const jobs = sqliteTable(
 
 export const sourcesRelations = relations(sources, ({ many }) => ({
   vacancies: many(vacancies),
+  telegram_channels: many(telegramChannels),
 }));
 
 export const companiesRelations = relations(companies, ({ many }) => ({
   vacancies: many(vacancies),
+}));
+
+export const telegramChannelsRelations = relations(telegramChannels, ({ one }) => ({
+  source: one(sources, {
+    fields: [telegramChannels.source_id],
+    references: [sources.id],
+  }),
 }));
 
 export const vacanciesRelations = relations(vacancies, ({ one, many }) => ({
@@ -405,6 +446,7 @@ export const schema = {
   tags,
   vacancy_tags,
   jobs,
+  telegramChannels,
   sourcesRelations,
   companiesRelations,
   vacanciesRelations,
@@ -413,6 +455,7 @@ export const schema = {
   coverLettersRelations,
   tagsRelations,
   vacancyTagsRelations,
+  telegramChannelsRelations,
 };
 
 export type Schema = typeof schema;

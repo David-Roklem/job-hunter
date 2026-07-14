@@ -28,6 +28,9 @@ node_modules
 # Wellfound session/profile (куки, localStorage, cache) — содержит приватную сессию
 /data/wellfound-profile/
 
+# HTML-дампы сайтов (реальный отрендеренный HTML с приватными данными сессии)
+/data/dumps/
+
 # Logs
 *.log
 npm-debug.log*
