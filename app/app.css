@@ -151,6 +151,23 @@ body {
   color: var(--muted);
 }
 
+.card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.card__actions .btn {
+  font-size: 0.85rem;
+  padding: 0.35rem 0.7rem;
+}
+
+.card__link {
+  text-decoration: none;
+  color: inherit;
+}
+
 .badge {
   font-size: 0.72rem;
   font-weight: 500;
@@ -161,6 +178,22 @@ body {
 .badge--muted {
   color: #6b6b6b;
   background: #f0f0f0;
+}
+
+/* Статусы откликов (review-ui фаза 10) */
+.badge--approved {
+  color: #15803d;
+  background: #dcfce7;
+}
+
+.badge--rejected {
+  color: #b91c1c;
+  background: #fee2e2;
+}
+
+.badge--draft {
+  color: #92400e;
+  background: #fef3c7;
 }
 
 /* Кнопки */
