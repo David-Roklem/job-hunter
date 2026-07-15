@@ -35,16 +35,22 @@ async function main(): Promise<void> {
 
   const args = parseArgs(process.argv);
 
-  // Подобрать вакансию: из аргумента или первую status='new'.
+  // Подобрать вакансию: из аргумента или первую-кандидата (new, иначе matched).
   let vacancyId = args.vacancy;
   if (vacancyId === undefined) {
-    const news = await vacanciesRepo.list({ status: "new", limit: 1 });
-    if (news.length === 0) {
-      console.error("Нет вакансий status='new' для smoke. Укажи --vacancy=<id>.");
+    let pool = await vacanciesRepo.list({ status: "new", limit: 1 });
+    if (pool.length === 0) {
+      // new обычно нет (сборщики фаз 05–07 выставляют matched сразу) — берём matched.
+      pool = await vacanciesRepo.list({ status: "matched", limit: 1 });
+    }
+    if (pool.length === 0) {
+      console.error(
+        "Нет вакансий-кандидатов (new/matched) для smoke. Укажи --vacancy=<id>.",
+      );
       process.exitCode = 1;
       return;
     }
-    vacancyId = news[0]!.id;
+    vacancyId = pool[0]!.id;
   }
 
   // Подобрать резюме: из аргумента или первый активный.

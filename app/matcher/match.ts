@@ -210,7 +210,14 @@ export type MatchAllError = {
 };
 
 /**
- * Сскорить все вакансии status='new' × все активные resume_templates.
+ * Сскорить вакансии-кандидаты × все активные resume_templates.
+ *
+ * Кандидаты для AI-скора — вакансии со статусом 'new' ИЛИ 'matched':
+ * сборщики фаз 05–07 выставляют 'matched' сразу при прохождении бинарного
+ * include/exclude фильтра при сборе, а 'new' — ещё не отфильтрованные. Оба
+ * статуса = валидный пул для matcher'а; 'rejected' осознанно исключён
+ * (отсечён фильтром источника). Если бы matchAll брал только 'new', батч
+ * никогда бы не подхватил уже собранные вакансии (сборщики не оставляют 'new').
  *
  * Continue-on-error: ошибка провайдера (429/перегрузка/сеть) на одной паре НЕ
  * роняет весь батч — пара пропускается и фиксируется в `errors`, остальные
@@ -226,8 +233,16 @@ export type MatchAllError = {
 export async function matchAll(
   opts: MatchOptions & { max?: number } = {},
 ): Promise<MatchAllStats> {
-  const vacancies = await vacanciesRepo.list({ status: "new" });
-  const capped = opts.max !== undefined ? vacancies.slice(0, opts.max) : vacancies;
+  // Кандидаты для matcher'а: 'new' (не отфильтрованы источником) И 'matched'
+  // (прошли source-фильтр фаз 05–07). 'rejected' исключён осознанно.
+  // list() принимает один status — читаем оба и сливаем (при ~155 вакансий
+  // разница в одном лишнем запросе пренебрежима).
+  const [news, matched] = await Promise.all([
+    vacanciesRepo.list({ status: "new" }),
+    vacanciesRepo.list({ status: "matched" }),
+  ]);
+  const all = [...news, ...matched];
+  const capped = opts.max !== undefined ? all.slice(0, opts.max) : all;
   const resumes = resumeTemplatesRepo.list().filter((r) => r.is_active);
 
   const results: MatchResult[] = [];

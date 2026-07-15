@@ -394,9 +394,10 @@ describe("matchAll", () => {
     expect(chatMock).toHaveBeenCalledTimes(2);
   });
 
-  it("игнорирует вакансии не-'new' статуса", async () => {
+  it("берёт вакансии 'new' И 'matched' (кандидаты matcher'а), исключает 'rejected'", async () => {
     const s = sourcesRepo.create({ kind: "hh", name: "hh", config: {} });
-    vacanciesRepo.create({
+    // new — попадает.
+    const newVac = vacanciesRepo.create({
       source_id: s.id,
       external_id: "e-new",
       title: "Backend",
@@ -405,7 +406,9 @@ describe("matchAll", () => {
       raw: {},
       collected_at: new Date(),
     });
-    // уже matched — не должен попасть в батч.
+    // matched (прошёл source-фильтр фаз 05–07) — тоже попадает: это валидный
+    // кандидат для AI-скора. Без этого батч никогда бы не взял уже собранные
+    // вакансии (сборщики не оставляют 'new').
     const matchedVac = vacanciesRepo.create({
       source_id: s.id,
       external_id: "e-matched",
@@ -416,6 +419,17 @@ describe("matchAll", () => {
       collected_at: new Date(),
     });
     vacanciesRepo.update(matchedVac.id, { status: "matched" });
+    // rejected (отсечён source-фильтром) — НЕ попадает.
+    const rejectedVac = vacanciesRepo.create({
+      source_id: s.id,
+      external_id: "e-rejected",
+      title: "Backend",
+      description: "Node.js",
+      url: "u3",
+      raw: {},
+      collected_at: new Date(),
+    });
+    vacanciesRepo.update(rejectedVac.id, { status: "rejected" });
 
     resumeTemplatesRepo.create({
       name: "A",
@@ -426,11 +440,13 @@ describe("matchAll", () => {
       content_md: "",
     });
     mockScore(70);
+    mockScore(70);
 
     const stats = await matchAll();
 
-    expect(stats.vacancies).toBe(1); // только new
-    expect(chatMock).toHaveBeenCalledTimes(1);
+    // new + matched = 2 вакансии-кандидата; rejected исключён.
+    expect(stats.vacancies).toBe(2);
+    expect(chatMock).toHaveBeenCalledTimes(2);
   });
 
   it("mid-batch ошибка провайдера → continue-on-error, частичный результат сохранён", async () => {
