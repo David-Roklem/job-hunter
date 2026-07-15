@@ -6,10 +6,10 @@
  * расширит это UI-оркестрацией и адаптацией резюме.
  */
 import { applicationsRepo, coverLettersRepo } from "~/db/repositories";
+import { type AiProvider } from "~/db/schema";
 import { skillsSchema } from "~/db/repositories/_shared";
 import { buildCoverLetterMessages, type CoverLetterLocale } from "./prompts/coverLetter";
 import { zai } from "./providers/zai";
-import type { AiProvider } from "./types";
 
 export type GenerateCoverLetterOptions = {
   locale?: CoverLetterLocale;
