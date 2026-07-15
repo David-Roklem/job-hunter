@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import type { Route } from "./+types/_index";
 
 /**
@@ -22,11 +23,13 @@ const SECTIONS = [
     key: "resumes",
     title: "Резюме",
     hint: "Шаблоны под разные роли и направления",
+    href: "/resumes",
   },
   {
     key: "responses",
     title: "Отклики",
     hint: "Черновики откликов на подтверждение",
+    href: "/applications",
   },
   {
     key: "sources",
@@ -51,12 +54,23 @@ export function Dashboard({ loaderData }: { loaderData: IndexLoaderData }) {
       </header>
 
       <ul className="dashboard__sections">
-        {SECTIONS.map((section) => (
-          <li key={section.key} className="dashboard__section">
-            <h2>{section.title}</h2>
-            <p>{section.hint}</p>
-          </li>
-        ))}
+        {SECTIONS.map((section) => {
+          const inner = (
+            <>
+              <h2>{section.title}</h2>
+              <p>{section.hint}</p>
+            </>
+          );
+          return (
+            <li key={section.key} className="dashboard__section">
+              {"href" in section && section.href ? (
+                <Link to={section.href}>{inner}</Link>
+              ) : (
+                inner
+              )}
+            </li>
+          );
+        })}
       </ul>
 
       <footer className="dashboard__footer">v{version}</footer>

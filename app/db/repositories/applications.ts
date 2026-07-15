@@ -97,6 +97,32 @@ export async function list(
   return rows;
 }
 
+/**
+ * Список applications С cover_letter, с relations (vacancy.company, resume_template,
+ * cover_letter) — для инбокса review-ui (фаза 10).
+ *
+ * Фильтр «есть cover_letter» — в JS: Drizzle relational query не фильтрует по
+ * наличию relation лаконично, а при ~100 откликах проход по массиву пренебрежим.
+ * Сортировка: свежие сверху (по cover_letter.generated_at desc).
+ */
+export async function listWithLetter() {
+  const rows = await db.query.applications.findMany({
+    with: {
+      vacancy: { with: { company: true } },
+      resume_template: true,
+      cover_letter: true,
+    },
+  });
+  const withLetter = rows.filter((r) => r.cover_letter !== null);
+  // generated_at у cover_letter есть всегда (NOT NULL в схеме).
+  withLetter.sort(
+    (a, b) =>
+      (b.cover_letter!.generated_at as Date).valueOf() -
+      (a.cover_letter!.generated_at as Date).valueOf(),
+  );
+  return withLetter;
+}
+
 /** Обновить поля отклика (статус, скор, дата отправки). Пустой patch — no-op. */
 export function update(
   id: number,
