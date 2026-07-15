@@ -24,7 +24,8 @@
     "telegram:seed": "tsx scripts/seed-telegram.ts",
     "telegram:collect": "tsx scripts/collect-telegram.ts",
     "telegram:fix-exclude": "tsx scripts/fix-telegram-exclude.ts",
-    "vacancies:list": "tsx scripts/list-vacancies.ts"
+    "vacancies:list": "tsx scripts/list-vacancies.ts",
+    "match": "tsx scripts/match.ts"
   },
   "dependencies": {
     "@react-router/node": "^8.1.0",

@@ -122,7 +122,7 @@ export class ZaiProvider implements AiProvider {
     }
 
     return {
-      content: parsed.data.choices[0].message.content,
+      content: parsed.data.choices[0]!.message.content,
       model,
       provider: this.name,
     };
