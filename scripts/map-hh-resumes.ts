@@ -19,7 +19,7 @@ import { loadEnv } from "./_env";
 loadEnv();
 
 const { hhResumeMappingRepo, resumeTemplatesRepo } = await import(
-  "../db/repositories"
+  "../app/db/repositories"
 );
 
 function parseArgs(argv: string[]): {
@@ -50,19 +50,19 @@ async function listHhResumeIds(): Promise<void> {
       return;
     }
     const html = await page.content();
-    // /resume/<hash> или /resume/<hash>?... → hash
-    const seen = new Map<string, string>();
-    const re = /resume-card-link-([a-f0-9]{30,})[^"]*"[^>]*>([^<]+)/gi;
+    // /resume/<hash> — ссылки на каждое резюме.
+    const seen = new Set<string>();
+    const re = /\/resume\/([a-f0-9]{20,})/gi;
     let m: RegExpExecArray | null;
     while ((m = re.exec(html))) {
-      seen.set(m[1]!, m[2]!.trim());
+      seen.add(m[1]!);
     }
     console.log("Резюме на hh-аккаунте:");
     if (seen.size === 0) {
       console.log("  (не найдены — проверьте /applicant/resumes вручную)");
     }
-    for (const [hash, name] of seen) {
-      console.log(`  ${hash}  ←  ${name.slice(0, 50)}`);
+    for (const hash of seen) {
+      console.log(`  ${hash}`);
     }
   } finally {
     await context.close().catch(() => {});

@@ -14,7 +14,7 @@ import { loadEnv } from "./_env";
 loadEnv();
 
 const { submitApplication } = await import("../app/hh/apply");
-const { applicationsRepo } = await import("../db/repositories");
+const { applicationsRepo } = await import("../app/db/repositories");
 
 function parseArgs(argv: string[]): {
   application?: number;
