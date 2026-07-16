@@ -19,7 +19,8 @@ type FakeChild = EventEmitter & {
 const h = vi.hoisted(() => {
   const lastSpawn = { value: null as { cmd: string; args: string[]; opts: unknown } | null };
   const spawnMock = vi.fn();
-  return { lastSpawn, spawnMock };
+  const spawnSyncMock = vi.fn(() => ({ status: 0, pid: 999 }));
+  return { lastSpawn, spawnMock, spawnSyncMock };
 });
 
 // vi.mock без importOriginal: возвращаем ОБА named + default export
@@ -27,6 +28,7 @@ const h = vi.hoisted(() => {
 vi.mock("node:child_process", () => ({
   default: { spawn: (...args: unknown[]) => h.spawnMock(...args) },
   spawn: (...args: unknown[]) => h.spawnMock(...args),
+  spawnSync: (...args: unknown[]) => h.spawnSyncMock(...args),
 }));
 
 import { launchCamoufoxServer } from "~/browser/launcher";
@@ -52,6 +54,8 @@ function makeFakeChild(): FakeChild {
 describe("launchCamoufoxServer", () => {
   beforeEach(() => {
     h.spawnMock.mockReset();
+    h.spawnSyncMock.mockReset();
+    h.spawnSyncMock.mockReturnValue({ status: 0, pid: 999 });
     h.lastSpawn.value = null;
   });
 
@@ -74,6 +78,8 @@ describe("launchCamoufoxServer", () => {
       "/tmp/x",
       "--locale",
       "en-US",
+      "--window",
+      "1920x1080",
     ]);
     const opts = h.lastSpawn.value!.opts as { cwd: string };
     expect(opts.cwd).toContain("python-bridge");
@@ -103,7 +109,26 @@ describe("launchCamoufoxServer", () => {
     await promise;
   });
 
-  it("stop() убивает child-процесс", async () => {
+  it("прокидывает --window WxH когда передан", async () => {
+    const fakeChild = makeFakeChild();
+    h.spawnMock.mockImplementation((cmd: string, args: string[], opts: unknown) => {
+      h.lastSpawn.value = { cmd, args, opts };
+      return fakeChild;
+    });
+
+    const promise = launchCamoufoxServer({
+      profileDir: "/tmp/y",
+      window: [2560, 1440],
+    });
+    expect(h.lastSpawn.value!.args).toContain("--window");
+    const idx = h.lastSpawn.value!.args.indexOf("--window");
+    expect(h.lastSpawn.value!.args[idx + 1]).toBe("2560x1440");
+
+    fakeChild.stdout.emit("data", Buffer.from("ws://localhost:33333/win\n"));
+    await promise;
+  });
+
+  it("stop() убивает child-процесс (taskkill /T /F на win32, kill на POSIX)", async () => {
     const fakeChild = makeFakeChild();
     h.spawnMock.mockReturnValue(fakeChild);
 
@@ -112,7 +137,21 @@ describe("launchCamoufoxServer", () => {
     const server = await promise;
 
     await server.stop();
-    expect(fakeChild.killed).toBe(true);
+
+    if (process.platform === "win32") {
+      // Windows: killChild использует taskkill /T /F чтобы убить дерево
+      // (uv.exe + его внук camoufox.exe). Без /T зомби-camoufox держит lock профиля.
+      expect(h.spawnSyncMock).toHaveBeenCalledTimes(1);
+      const [cmd, args] = h.spawnSyncMock.mock.calls[0] as [string, string[]];
+      expect(cmd).toBe("taskkill");
+      expect(args).toContain("/T");
+      expect(args).toContain("/F");
+      expect(args).toContain("/PID");
+      expect(args).toContain(String(fakeChild.pid));
+    } else {
+      // POSIX: обычный child.kill()
+      expect(fakeChild.killed).toBe(true);
+    }
   });
 
   it("rejects если процесс exit'нул до wsEndpoint", async () => {

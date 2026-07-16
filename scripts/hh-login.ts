@@ -9,7 +9,7 @@
  *
  * После этого hh:collect работает headless, переиспользуя сессию.
  */
-import { createContext, isLoggedIn } from "../app/hh/session";
+import { createContext, isLoggedIn, saveSession } from "../app/hh/session";
 
 const LOGIN_URL = "https://hh.ru/account/login";
 const POLL_INTERVAL_MS = 2000;
@@ -19,7 +19,8 @@ async function main(): Promise<void> {
   console.log("=== hh.ru login ===\n");
   console.log("Открываю браузер. Залогиньтесь вручную (капча/2FA пройдут в окне).\n");
 
-  const context = await createContext({ headed: true });
+  // Login: чистый context без storageState (не подгружать протухшую сессию).
+  const context = await createContext({ headed: true, storageStatePath: null });
   const page = await context.newPage();
 
   try {
@@ -46,7 +47,11 @@ async function main(): Promise<void> {
     }
 
     console.log("\n✓ Логин подтверждён.");
-    console.log("✓ Сессия сохранена в data/hh-profile (persisted context).");
+
+    // Сохранить сессию (куки+localStorage) в STORAGE_STATE_PATH.
+    // launch_server неперсистентен — без этого collect/apply не увидят сессию.
+    await saveSession(context);
+    console.log("✓ Сессия (storageState) сохранена в data/hh-session.json.");
     console.log("Теперь можно запускать сбор: npm run hh:collect -- --source=1 --profile=1");
   } catch (err) {
     console.error("\n✗ Ошибка:", err);

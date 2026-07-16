@@ -11,8 +11,15 @@
  *
  * Camoufox покрывает анти-детект нативно: fingerprint генерируется через
  * BrowserForge, `humanize:true` (передаётся в serve.py) — реалистичные движения
- * курсора. Профиль персистентен в `data_dir` (Python-side): куки/localStorage
- * переживают перезапуски, повторный логин не нужен.
+ * курсора.
+ *
+ * ПЕРСИСТЕНТНОСТЬ СЕССИИ: launch_server() (Playwright-server) НЕ использует
+ * persistent context — куки/localStorage живут только в памяти процесса и
+ * теряются при остановке (data_dir в server-режиме не делает контекст
+ * персистентным для подключаемых клиентов). Поэтому сессия сохраняется
+ * через **storageState**: после ручного логина context.storageState()
+ * пишет куки+localStorage в JSON-файл (storageStatePath), а следующий запуск
+ * newContext({storageState}) их подставляет. См. hh-login.ts → hh/session.ts.
  *
  * Почему Python-bridge, а не JS-порт camoufox: JS-порт (camoufox@0.1.19) сырой —
  * 3 бага (ESM dynamic-require, geoip proxy, viewport protocol skew). Python-порт
@@ -32,6 +39,13 @@ export type CreateContextOptions = {
   headed?: boolean;
   /** locale браузера (языковой интерфейс). Дефолт "ru-RU" (hh). Wellfound → "en-US". */
   locale?: string;
+  /** Фиксированный размер окна [w, h]. Дефолт [1920, 1080] (см. launcher.ts). */
+  window?: [number, number];
+  /** Путь к JSON-файлу storageState (куки+localStorage).
+   * Если задан и файл существует — context создаётся с этими куками
+   * (newContext({storageState})). Используется для переиспользования сессии
+   * между запусками: login сохраняет storageState, collect/apply — подгружает. */
+  storageStatePath?: string;
 };
 
 /** Внутренний тип: context + ссылка на stop() для cleanup. */
@@ -59,6 +73,7 @@ export async function createContext(
     profileDir: opts.profileDir,
     headed: opts.headed,
     locale: opts.locale ?? "ru-RU",
+    window: opts.window,
   });
 
   // 2. Подключиться к серверу через Playwright-server protocol (firefox.connect).
@@ -72,16 +87,27 @@ export async function createContext(
     );
   }
 
-  // 3. Получить/создать context. Сервер Camoufox может держать default context
-  //    (с persistent data_dir) или нет — обработать оба случая.
+  // 3. Получить/создать context.
+  //    Если просят storageState (переиспользование сессии) — ВСЕГДА создавать
+  //    новый context через newContext({storageState}): default-context сервера
+  //    уже создан без кук, и storageState к нему не применить. Иначе можно
+  //    переиспользовать default-context сервера (если есть).
   let context: BrowserContext;
-  const contexts = browser.contexts();
-  if (contexts.length > 0) {
-    context = contexts[0]!;
+  const hasStorageState =
+    opts.storageStatePath &&
+    (await import("node:fs")).existsSync(opts.storageStatePath);
+
+  if (hasStorageState) {
+    context = await browser.newContext({
+      storageState: opts.storageStatePath,
+    });
   } else {
-    // Remote browser без default context — создать новый. Куки всё равно
-    // персистятся в data_dir (управляется Camoufox-side).
-    context = await browser.newContext();
+    const contexts = browser.contexts();
+    if (contexts.length > 0) {
+      context = contexts[0]!;
+    } else {
+      context = await browser.newContext();
+    }
   }
 
   // 4. Обернуть context.close(): убить Python-сервер после закрытия.

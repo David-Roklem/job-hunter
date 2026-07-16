@@ -19,7 +19,7 @@ const fakes = vi.hoisted(() => {
     newPage: vi.fn(async () => ({})),
   };
   const contextsFn = vi.fn(() => [fakeContext]);
-  const newContextFn = vi.fn(async () => fakeContext);
+  const newContextFn = vi.fn(async (_opts?: unknown) => fakeContext);
   const fakeBrowser = {
     contexts: contextsFn,
     newContext: newContextFn,
@@ -35,6 +35,7 @@ const fakes = vi.hoisted(() => {
     newContextFn,
     fakeBrowser,
     connectMock,
+    existsSyncMock: vi.fn(() => false),
   };
 });
 
@@ -44,6 +45,14 @@ vi.mock("~/browser/launcher", () => ({
 vi.mock("playwright", () => ({
   firefox: { connect: (ws: unknown) => fakes.connectMock(ws) },
 }));
+// session.ts использует динамический import("node:fs") для existsSync(storageStatePath).
+vi.mock("node:fs", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:fs")>();
+  return {
+    ...actual,
+    existsSync: (p: unknown) => fakes.existsSyncMock(p),
+  };
+});
 
 import { createContext } from "~/browser/session";
 
@@ -54,6 +63,7 @@ describe("createContext (Python-bridge)", () => {
     fakes.fakeStop.mockReset();
     fakes.fakeContextClose.mockReset();
     fakes.newContextFn.mockReset();
+    fakes.existsSyncMock.mockReset();
 
     // defaults
     fakes.launchCamoufoxServerMock.mockResolvedValue({
@@ -62,6 +72,7 @@ describe("createContext (Python-bridge)", () => {
     });
     fakes.connectMock.mockResolvedValue(fakes.fakeBrowser);
     fakes.contextsFn.mockReturnValue([fakes.fakeContext]);
+    fakes.existsSyncMock.mockReturnValue(false); // по умолчанию storageState-файла нет
 
     // ВАЖНО: session.ts мутирует fakeContext.close (оборачивает).
     // Восстанавливать оригинал перед каждым тестом, иначе обёртки накапливаются.
@@ -103,6 +114,22 @@ describe("createContext (Python-bridge)", () => {
     fakes.contextsFn.mockReturnValue([]);
     await createContext({ profileDir: "/tmp/x" });
     expect(fakes.newContextFn).toHaveBeenCalledTimes(1);
+  });
+
+  it("если storageStatePath задан и файл существует — newContext({storageState})", async () => {
+    fakes.existsSyncMock.mockReturnValue(true);
+    await createContext({ profileDir: "/tmp/x", storageStatePath: "/tmp/sess.json" });
+    expect(fakes.existsSyncMock).toHaveBeenCalledWith("/tmp/sess.json");
+    expect(fakes.newContextFn).toHaveBeenCalledTimes(1);
+    expect(fakes.newContextFn.mock.calls[0][0]).toEqual({
+      storageState: "/tmp/sess.json",
+    });
+  });
+
+  it("если storageStatePath задан, но файла нет — переиспользует default context", async () => {
+    fakes.existsSyncMock.mockReturnValue(false);
+    await createContext({ profileDir: "/tmp/x", storageStatePath: "/tmp/missing.json" });
+    expect(fakes.newContextFn).not.toHaveBeenCalled(); // взяли contexts()[0]
   });
 
   it("бросает Error, если profileDir пуст", async () => {

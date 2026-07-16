@@ -16,6 +16,7 @@
     "hh:collect": "tsx scripts/collect-hh.ts",
     "hh:seed": "tsx scripts/seed-hh.ts",
     "hh:stealth-check": "tsx scripts/stealth-check.ts",
+    "hh:smoke-session": "tsx scripts/smoke-hh-session.ts",
     "wellfound:seed": "tsx scripts/seed-wellfound.ts",
     "wellfound:login": "tsx scripts/wellfound-login.ts",
     "wellfound:collect": "tsx scripts/collect-wellfound.ts",

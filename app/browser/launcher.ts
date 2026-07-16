@@ -31,6 +31,10 @@ export type LaunchOptions = {
   headed?: boolean;
   /** locale браузера. Дефолт "en-US". */
   locale?: string;
+  /** Фиксированный размер окна [width, height]. Дефолт [1920, 1080].
+   * В headed-режиме Camoufox иначе открывает случайное (по fingerprint) окно,
+   * часто меньше монитора. Также ограничивает screen fingerprint теми же лимитами. */
+  window?: [number, number];
 };
 
 export type LaunchedServer = {
@@ -58,6 +62,8 @@ export function launchCamoufoxServer(
       opts.profileDir,
       "--locale",
       opts.locale ?? "en-US",
+      "--window",
+      `${opts.window?.[0] ?? 1920}x${opts.window?.[1] ?? 1080}`,
     ];
     if (opts.headed) args.push("--headed");
 
@@ -132,17 +138,44 @@ export function launchCamoufoxServer(
   });
 }
 
-/** Безопасно убить дочерний процесс (с попыткой graceful, затем force). */
+/**
+ * Безопасно убить дочернее дерево процессов (Python-сервер + его дети).
+ *
+ * На Windows убийство только родителя (uv.exe) НЕ убивает внука camoufox.exe —
+ * он остаётся зомби и держит lock профиля data/hh-profile, блокируя следующие
+ * запуски. Поэтому на Windows используем `taskkill /PID <pid> /T /F`
+ * (kill tree). На POSIX — group-kill если можем, иначе SIGTERM/SIGKILL.
+ */
 async function killChild(child: ChildProcess): Promise<void> {
   if (child.exitCode !== null || child.killed) return;
+  const pid = child.pid;
   try {
-    // graceful: SIGTERM (на Windows = TerminateProcess, но пробуем).
-    child.kill("SIGTERM");
-    await new Promise((r) => setTimeout(r, 500));
-    if (child.exitCode === null && !child.killed) {
-      child.kill("SIGKILL");
+    if (process.platform === "win32" && pid !== undefined) {
+      // /T = kill tree (родитель + все потомки), /F = force.
+      // spawnSync синхронно, чтобы дождаться убийства перед возвратом.
+      const { spawnSync } = await import("node:child_process");
+      spawnSync("taskkill", ["/PID", String(pid), "/T", "/F"], {
+        windowsHide: true,
+        stdio: "ignore",
+      });
+    } else {
+      // POSIX: graceful SIGTERM, затем SIGKILL.
+      try {
+        child.kill("SIGTERM");
+        await new Promise((r) => setTimeout(r, 500));
+        if (child.exitCode === null && !child.killed) {
+          child.kill("SIGKILL");
+        }
+      } catch {
+        // best-effort
+      }
     }
   } catch {
-    // best-effort
+    // best-effort — даже если taskkill упал, пробуем обычный kill.
+    try {
+      child.kill();
+    } catch {
+      // ignore
+    }
   }
 }
