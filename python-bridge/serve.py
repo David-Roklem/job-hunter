@@ -128,9 +128,12 @@ def main() -> None:
         locale=args.locale,
         window=args.window,
         screen=Screen(max_width=args.window[0], max_height=args.window[1]),
+        i_know_what_im_doing=True,
     )
     if fingerprint is not None:
         launch_kwargs["fingerprint"] = fingerprint
+    if os.environ.get("CAMOUFOX_DEBUG"):
+        launch_kwargs["debug"] = True
     launch_server(**launch_kwargs)
 
 
