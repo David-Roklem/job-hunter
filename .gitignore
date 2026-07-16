@@ -21,9 +21,11 @@ node_modules
 *.sqlite
 *.sqlite-journal
 
-# hh.ru session/profile (куки, localStorage, cache) — содержит приватную сессию
+# hh.ru session/profile/fingerprint (куки, localStorage, cache, fingerprint) — приватное состояние
 /data/hh-profile/
 /data/hh-session.json
+/data/hh-fingerprint.json
+/data/dumps/
 
 # Wellfound session/profile (куки, localStorage, cache) — содержит приватную сессию
 /data/wellfound-profile/
@@ -48,3 +50,5 @@ Thumbs.db
 
 # Python-bridge (uv environment)
 /python-bridge/.venv/
+__pycache__/
+*.pyc

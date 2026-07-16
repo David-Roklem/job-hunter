@@ -35,6 +35,12 @@ export type LaunchOptions = {
    * В headed-режиме Camoufox иначе открывает случайное (по fingerprint) окно,
    * часто меньше монитора. Также ограничивает screen fingerprint теми же лимитами. */
   window?: [number, number];
+  /** Путь к JSON-файлу с зафиксированным BrowserForge fingerprint.
+   * Если задан (и файл существует) — serve.py передаёт fingerprint в
+   * launch_server(fingerprint=...) → hh видит тот же отпечаток между запусками.
+   * null — явно отключить (случайный fingerprint каждый запуск).
+   * См. python-bridge/fingerprint.py, scripts/gen-fingerprint.py. */
+  fingerprintPath?: string | null;
 };
 
 export type LaunchedServer = {
@@ -66,6 +72,9 @@ export function launchCamoufoxServer(
       `${opts.window?.[0] ?? 1920}x${opts.window?.[1] ?? 1080}`,
     ];
     if (opts.headed) args.push("--headed");
+    if (opts.fingerprintPath) {
+      args.push("--fingerprint", opts.fingerprintPath);
+    }
 
     let child: ChildProcess;
     try {

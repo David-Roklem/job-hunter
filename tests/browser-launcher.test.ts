@@ -128,6 +128,43 @@ describe("launchCamoufoxServer", () => {
     await promise;
   });
 
+  it("прокидывает --fingerprint <path> когда передан", async () => {
+    const fakeChild = makeFakeChild();
+    h.spawnMock.mockImplementation((cmd: string, args: string[], opts: unknown) => {
+      h.lastSpawn.value = { cmd, args, opts };
+      return fakeChild;
+    });
+
+    const promise = launchCamoufoxServer({
+      profileDir: "/tmp/y",
+      fingerprintPath: "/tmp/fp.json",
+    });
+    expect(h.lastSpawn.value!.args).toContain("--fingerprint");
+    const idx = h.lastSpawn.value!.args.indexOf("--fingerprint");
+    expect(h.lastSpawn.value!.args[idx + 1]).toBe("/tmp/fp.json");
+
+    fakeChild.stdout.emit("data", Buffer.from("ws://localhost:44444/fp\n"));
+    await promise;
+  });
+
+  it("НЕ добавляет --fingerprint если fingerprintPath=null/undefined", async () => {
+    const fakeChild = makeFakeChild();
+    h.spawnMock.mockImplementation((cmd: string, args: string[], opts: unknown) => {
+      h.lastSpawn.value = { cmd, args, opts };
+      return fakeChild;
+    });
+
+    const promise1 = launchCamoufoxServer({ profileDir: "/tmp/a", fingerprintPath: null });
+    expect(h.lastSpawn.value!.args).not.toContain("--fingerprint");
+    fakeChild.stdout.emit("data", Buffer.from("ws://localhost:1/a\n"));
+    await promise1;
+
+    const promise2 = launchCamoufoxServer({ profileDir: "/tmp/b" });
+    expect(h.lastSpawn.value!.args).not.toContain("--fingerprint");
+    fakeChild.stdout.emit("data", Buffer.from("ws://localhost:2/b\n"));
+    await promise2;
+  });
+
   it("stop() убивает child-процесс (taskkill /T /F на win32, kill на POSIX)", async () => {
     const fakeChild = makeFakeChild();
     h.spawnMock.mockReturnValue(fakeChild);

@@ -132,6 +132,27 @@ describe("createContext (Python-bridge)", () => {
     expect(fakes.newContextFn).not.toHaveBeenCalled(); // взяли contexts()[0]
   });
 
+  it("пробрасывает fingerprintPath в launchCamoufoxServer", async () => {
+    await createContext({
+      profileDir: "/tmp/x",
+      fingerprintPath: "/tmp/fp.json",
+    });
+    expect(fakes.launchCamoufoxServerMock).toHaveBeenCalledTimes(1);
+    const passedOpts = fakes.launchCamoufoxServerMock.mock.calls[0][0] as {
+      fingerprintPath?: string;
+    };
+    expect(passedOpts.fingerprintPath).toBe("/tmp/fp.json");
+  });
+
+  it("fingerprintPath=null пробрасывается как undefined в launcher", async () => {
+    await createContext({ profileDir: "/tmp/x", fingerprintPath: null });
+    const passedOpts = fakes.launchCamoufoxServerMock.mock.calls[0][0] as {
+      fingerprintPath?: string | null;
+    };
+    // null означает «явно отключить» — launcher не должен добавлять --fingerprint.
+    expect(passedOpts.fingerprintPath == null).toBe(true);
+  });
+
   it("бросает Error, если profileDir пуст", async () => {
     await expect(createContext({ profileDir: "" })).rejects.toThrow(/profileDir обязателен/);
     expect(fakes.launchCamoufoxServerMock).not.toHaveBeenCalled();

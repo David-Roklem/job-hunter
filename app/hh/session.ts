@@ -34,15 +34,37 @@ export const STORAGE_STATE_PATH = path.join(
   "hh-session.json",
 );
 
-/** Маркеры залогиненности на hh (проверяются через общий isLoggedIn). */
+/**
+ * JSON-файл с зафиксированным BrowserForge fingerprint.
+ *
+ * КРИТИЧНО для hh: между запусками fingerprint должен совпадать, иначе hh
+ * инвалидирует сессию даже при валидных куках (кука выдана под fingerprint-A,
+ * а collect стартует под fingerprint-B → silent разлогин). Файл генерируется
+ * разово через `npm run gen:fingerprint` (scripts/gen-fingerprint.py),
+ * serve.py передаёт его в launch_server(fingerprint=...).
+ */
+export const HH_FINGERPRINT_PATH = path.join(
+  process.cwd(),
+  "data",
+  "hh-fingerprint.json",
+);
+
+/** Маркеры залогиненности на hh (проверяются через общий isLoggedIn).
+ * hh ~2026-07 сменил mainmenu_myResumes → mainmenu_profileAndResumes
+ * (и добавил mainmenu_vacancyResponses — «Отклики» в меню соискателя).
+ * Любой из этих селекторов = залогиненная страница. */
 const HH_LOGIN_MARKERS = [
+  '[data-qa="mainmenu_profileAndResumes"]',
+  '[data-qa="profileAndResumes-button"]',
+  '[data-qa="mainmenu_vacancyResponses"]',
+  // Легаси-маркеры на случай, если hh вернёт старую разметку (A/B-тесты и т.п.).
   '[data-qa="mainmenu_myResumes"]',
   '[data-qa="account-menu"]',
 ];
 
 export type CreateContextOptions = Pick<
   BaseCreateContextOptions,
-  "headed" | "storageStatePath"
+  "headed" | "storageStatePath" | "fingerprintPath"
 >;
 
 /**
@@ -50,7 +72,10 @@ export type CreateContextOptions = Pick<
  * locale зафиксирован под hh (ru-RU). timezone — через Camoufox geoip.
  * storageState по умолчанию подгружается из STORAGE_STATE_PATH (если файл есть) —
  * это позволяет collect/apply переиспользовать сессию из hh-login.
- * Передай storageStatePath: null, чтобы явно отключить (например, для login).
+ * fingerprint по умолчанию подгружается из HH_FINGERPRINT_PATH — ОБЯЗАТЕЛЬНО
+ * совпадает между login и collect/apply, иначе hh инвалидирует сессию.
+ * Передай storageStatePath: null или fingerprintPath: null, чтобы явно отключить
+ * (например, storageStatePath: null для login — не тащить протухшую сессию).
  */
 export function createContext(
   opts: CreateContextOptions = {},
@@ -60,6 +85,7 @@ export function createContext(
     headed: opts.headed,
     locale: "ru-RU",
     storageStatePath: opts.storageStatePath ?? STORAGE_STATE_PATH,
+    fingerprintPath: opts.fingerprintPath ?? HH_FINGERPRINT_PATH,
   });
 }
 

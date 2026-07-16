@@ -21,10 +21,19 @@ camoufox.server.launch_server(). Сервер печатает WebSocket endpoin
   uv run python serve.py --profile /path/to/profile --headed --locale en-US
 """
 import argparse
+import os
 import sys
 
 from browserforge.fingerprints import Screen
 from camoufox.server import launch_server
+
+# fingerprint-модуль рядом (python-bridge/fingerprint.py). Импорт с fallback —
+# serve.py должен работать и без него (тогда --fingerprint недоступен).
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+try:
+    from fingerprint import from_json as load_fingerprint
+except ImportError:  # pragma: no cover
+    load_fingerprint = None  # type: ignore[assignment]
 
 
 def parse_window(value: str) -> tuple[int, int]:
@@ -55,12 +64,47 @@ def main() -> None:
         help="fixed window size 'WxH' (default 1920x1080). Constrains the "
         "generated fingerprint's screen to these dimensions too.",
     )
+    parser.add_argument(
+        "--fingerprint",
+        default=None,
+        help="path to a serialized BrowserForge fingerprint JSON. If the file "
+        "exists, the same fingerprint is reused on every launch — required for "
+        "hh.ru session persistence (hh invalidates sessions whose fingerprint "
+        "changed between runs). See scripts/gen-fingerprint.py.",
+    )
     args = parser.parse_args()
+
+    # Загрузить fingerprint, если задан и файл существует.
+    fingerprint = None
+    if args.fingerprint:
+        if load_fingerprint is None:
+            print(
+                "[!] --fingerprint передан, но модуль fingerprint недоступен; "
+                "игнорирую (будет случайный fingerprint).",
+                file=sys.stderr,
+                flush=True,
+            )
+        elif os.path.exists(args.fingerprint):
+            fingerprint = load_fingerprint(args.fingerprint)
+            print(
+                f"[*] fingerprint loaded from {args.fingerprint} "
+                f"(UA={fingerprint.navigator.userAgent[:50]}...)",
+                file=sys.stderr,
+                flush=True,
+            )
+        else:
+            print(
+                f"[!] --fingerprint {args.fingerprint} не найден; "
+                "используется случайный fingerprint.",
+                file=sys.stderr,
+                flush=True,
+            )
 
     # Логируем параметры в stderr (stdout зарезервирован под WSENDPOINT-маркер).
     print(
         f"[*] camoufox server: profile={args.profile} headed={args.headed} "
-        f"locale={args.locale} window={args.window[0]}x{args.window[1]}",
+        f"locale={args.locale} window={args.window[0]}x{args.window[1]} "
+        f"fingerprint={'yes' if fingerprint else 'random'}",
         file=sys.stderr,
         flush=True,
     )
@@ -74,7 +118,10 @@ def main() -> None:
     # fingerprint), который в headed-режиме часто меньше монитора и неудобен
     # для ручного логина. Фиксируем window и ограничиваем screen теми же
     # лимитами — CSS media queries и screen.width/height будут консистентны.
-    launch_server(
+    #
+    # fingerprint (если задан): явный BrowserForge Fingerprint → hh видит тот
+    # же отпечаток между запусками → не инвалидирует сессию.
+    launch_kwargs = dict(
         data_dir=args.profile,
         headless=not args.headed,
         humanize=True,
@@ -82,6 +129,9 @@ def main() -> None:
         window=args.window,
         screen=Screen(max_width=args.window[0], max_height=args.window[1]),
     )
+    if fingerprint is not None:
+        launch_kwargs["fingerprint"] = fingerprint
+    launch_server(**launch_kwargs)
 
 
 if __name__ == "__main__":

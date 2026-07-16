@@ -46,6 +46,11 @@ export type CreateContextOptions = {
    * (newContext({storageState})). Используется для переиспользования сессии
    * между запусками: login сохраняет storageState, collect/apply — подгружает. */
   storageStatePath?: string;
+  /** Путь к JSON-файлу с зафиксированным BrowserForge fingerprint.
+   * Если задан — пробрасывается в serve.py --fingerprint → launch_server(fingerprint=...).
+   * КРИТИЧНО для hh: между запусками fingerprint должен совпадать, иначе hh
+   * инвалидирует сессию (см. python-bridge/fingerprint.py). null — отключить. */
+  fingerprintPath?: string | null;
 };
 
 /** Внутренний тип: context + ссылка на stop() для cleanup. */
@@ -74,6 +79,7 @@ export async function createContext(
     headed: opts.headed,
     locale: opts.locale ?? "ru-RU",
     window: opts.window,
+    fingerprintPath: opts.fingerprintPath,
   });
 
   // 2. Подключиться к серверу через Playwright-server protocol (firefox.connect).
