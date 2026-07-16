@@ -34,7 +34,31 @@ export const HH_SELECTORS = {
     /** Ключевые навыки. */
     keySkill: '[data-qa="bloko-tag"]',
   },
+  /** Форма отклика (/applicant/vacancy_response?vacancyId=X).
+   * Селекторы по дампу 2026-07-16 (data/dumps/hh-apply-form.html). */
+  apply: {
+    /** Dropdown выбора резюме — div[role=button] с названием текущего резюме.
+     * hh НЕ даёт ему data-qa; выбираем по позиции: первый div[role=button]
+     * в форме отклика. Клик открывает список доступных резюме. */
+    resumeDropdown: 'form div[role="button"]',
+    /** Тумблер «добавить письмо». Клик раскрывает textarea (рендерится JS). */
+    letterToggle: '[data-qa="vacancy-response-letter-toggle"]',
+    /** Textarea письма — появляется после клика letterToggle. */
+    letterTextarea: 'textarea',
+    /** Кнопка submit «Откликнуться». */
+    submit: '[data-qa="vacancy-response-submit-popup"]',
+    /** Маркер формы (h1). */
+    heading: 'h1',
+  },
 } as const;
+
+/** URL формы отклика hh (buildApplyFormUrl собирает полный URL). */
+export const HH_APPLY_FORM_URL = "https://hh.ru/applicant/vacancy_response";
+
+/** Собрать URL формы отклика для вакансии. */
+export function buildApplyFormUrl(vacancyId: string): string {
+  return `${HH_APPLY_FORM_URL}?vacancyId=${vacancyId}`;
+}
 
 /** URL поиска вакансий hh. */
 export const HH_SEARCH_URL = "https://hh.ru/search/vacancy";

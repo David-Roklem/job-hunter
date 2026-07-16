@@ -2,6 +2,7 @@ import { data, redirect } from "react-router";
 import { Link } from "react-router";
 import { applicationsRepo } from "~/db/repositories";
 import { generateCoverLetter } from "~/ai/generateCoverLetter";
+import { submitApplication } from "~/hh/apply";
 import type { ApplicationStatus } from "~/db/schema";
 import type { Route } from "./+types/applications._index";
 
@@ -60,6 +61,24 @@ export async function action(
     } catch (err) {
       throw data(
         err instanceof Error ? err.message : "ошибка регенерации",
+        { status: 500 },
+      );
+    }
+  }
+
+  if (intent === "apply") {
+    // submitApplication (фаза 11) — Playwright long-running (секунды).
+    // Для UI приемлемо в local single-user; для нагрузки — scheduler (фаза 12).
+    try {
+      const result = await submitApplication({ applicationId: id });
+      if (result.ok) {
+        return redirect("/applications");
+      }
+      throw data(result.reason ?? "отклик не отправлен", { status: 500 });
+    } catch (err) {
+      if (err instanceof Response) throw err; // data() Response — пробросить
+      throw data(
+        err instanceof Error ? err.message : "ошибка отклика",
         { status: 500 },
       );
     }
@@ -139,6 +158,11 @@ function ApplicationCard({ app }: { app: ApplicationRow }) {
         <button type="submit" name="intent" value="regenerate" className="btn">
           ↻ Регенерировать
         </button>
+        {app.status === "approved" && (
+          <button type="submit" name="intent" value="apply" className="btn btn--primary">
+            ↗ Отправить отклик
+          </button>
+        )}
         <Link to={`/applications/${app.id}/edit`} className="btn">
           Редактировать
         </Link>
