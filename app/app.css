@@ -196,6 +196,54 @@ body {
   background: #fef3c7;
 }
 
+/* Статусы очереди (scheduler фаза 12) */
+.badge--danger {
+  color: #b91c1c;
+  background: #fee2e2;
+}
+
+/* Таблица очереди задач (/jobs) */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+.table th,
+.table td {
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid #eee;
+  text-align: left;
+  vertical-align: top;
+}
+.table th {
+  font-size: 0.78rem;
+  color: #6b6b6b;
+  font-weight: 500;
+}
+.table__mono {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 0.8rem;
+  color: #555;
+  max-width: 24rem;
+  word-break: break-word;
+}
+.table__actions {
+  white-space: nowrap;
+}
+.table__actions form {
+  margin-right: 0.3rem;
+}
+.table__actions .btn {
+  padding: 0.25rem 0.6rem;
+  font-size: 0.82rem;
+}
+
+.page__hint {
+  color: #555;
+  font-size: 0.9rem;
+  margin: 0.5rem 0 1.5rem;
+}
+
 /* Кнопки */
 .btn {
   display: inline-block;
