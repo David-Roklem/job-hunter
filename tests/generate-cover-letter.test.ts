@@ -38,7 +38,7 @@ vi.mock("~/ai/providers/zai", () => ({
 }));
 
 const { generateCoverLetter } = await import("~/ai/generateCoverLetter");
-const { sourcesRepo, vacanciesRepo, applicationsRepo, resumeTemplatesRepo, coverLettersRepo } =
+const { sourcesRepo, vacanciesRepo, applicationsRepo, resumeTemplatesRepo, coverLettersRepo, userProfileRepo } =
   await import("~/db/repositories");
 
 /** Создаёт полный граф записей и возвращает applicationId. */
@@ -169,5 +169,44 @@ describe("generateCoverLetter", () => {
     expect(userContent).toContain("Тест-Компания");
     expect(userContent).toContain("Node.js");
     expect(userContent).toContain("Senior Backend");
+  });
+
+  it("без профиля — в промпте нет блока «ДАННЫЕ КАНДИДАТА ДЛЯ ПОДПИСИ»", async () => {
+    const applicationId = await seedApplication();
+    chatMock.mockResolvedValueOnce({ content: "ok", model: "m", provider: "zai" });
+    await generateCoverLetter(applicationId);
+    const userContent = chatMock.mock.calls[0][0].messages.find(
+      (m: { role: string }) => m.role === "user",
+    ).content;
+    expect(userContent).not.toContain("ДАННЫЕ КАНДИДАТА ДЛЯ ПОДПИСИ");
+  });
+
+  it("с профилем — в промпт попадают имя/контакты из профиля", async () => {
+    const applicationId = await seedApplication();
+    userProfileRepo.upsert({
+      name: "Пётр Петров",
+      contacts: { telegram: "@peter", email: "peter@example.com" },
+      signature_md: "С уважением, Пётр",
+    });
+    chatMock.mockResolvedValueOnce({ content: "ok", model: "m", provider: "zai" });
+    await generateCoverLetter(applicationId);
+    const userContent = chatMock.mock.calls[0][0].messages.find(
+      (m: { role: string }) => m.role === "user",
+    ).content;
+    expect(userContent).toContain("ДАННЫЕ КАНДИДАТА ДЛЯ ПОДПИСИ");
+    expect(userContent).toContain("Пётр Петров");
+    expect(userContent).toContain("@peter");
+    expect(userContent).toContain("peter@example.com");
+    expect(userContent).toContain("С уважением, Пётр");
+  });
+
+  it("system-промпт содержит анти-плейсхолдер инструкцию", async () => {
+    const applicationId = await seedApplication();
+    chatMock.mockResolvedValueOnce({ content: "ok", model: "m", provider: "zai" });
+    await generateCoverLetter(applicationId);
+    const systemContent = chatMock.mock.calls[0][0].messages.find(
+      (m: { role: string }) => m.role === "system",
+    ).content;
+    expect(systemContent).toContain("плейсхолдеры");
   });
 });

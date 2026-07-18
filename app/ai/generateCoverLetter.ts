@@ -5,7 +5,7 @@
  * промпт → LLM (z.ai) → запись в cover_letters. Фаза 09 (draft-generator)
  * расширит это UI-оркестрацией и адаптацией резюме.
  */
-import { applicationsRepo, coverLettersRepo } from "~/db/repositories";
+import { applicationsRepo, coverLettersRepo, userProfileRepo } from "~/db/repositories";
 import { type AiProvider } from "~/db/schema";
 import { skillsSchema } from "~/db/repositories/_shared";
 import { buildCoverLetterMessages, type CoverLetterLocale } from "./prompts/coverLetter";
@@ -53,6 +53,17 @@ export async function generateCoverLetter(
   // skills: resume_template хранит skills_json (сырой TEXT) — парсим через zod.
   const skills = parseSkills(resume.skills_json);
 
+  // Профиль кандидата (фаза cover-letter-profile): реальные имя/контакты для
+  // подписи, чтобы модель не вставляла плейсхолдеры. null = профиль не задан.
+  const userProfile = userProfileRepo.get();
+  const candidateProfile = userProfile
+    ? {
+        name: userProfile.name,
+        contacts: userProfile.contacts,
+        signature: userProfile.signature_md || undefined,
+      }
+    : undefined;
+
   // 2. Собрать промпт.
   const messages = buildCoverLetterMessages({
     vacancy: {
@@ -69,6 +80,7 @@ export async function generateCoverLetter(
       contentMd: resume.content_md ?? undefined,
     },
     locale: opts.locale ?? "ru",
+    candidateProfile,
   });
 
   // 3. Вызвать провайдер.

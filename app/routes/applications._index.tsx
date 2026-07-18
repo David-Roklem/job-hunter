@@ -129,9 +129,15 @@ function ApplicationCard({ app }: { app: ApplicationRow }) {
   return (
     <li className="card">
       <div className="card__title">
-        <Link to={`/applications/${app.id}/edit`} className="card__link">
-          {vacancy.title}
-        </Link>
+        {/* Название вакансии — внешняя ссылка на источник (hh.ru/Wellfound/...). */}
+        <a
+          href={vacancy.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="card__vacancy"
+        >
+          {vacancy.title} ↗
+        </a>
         <span className={statusBadgeClass(app.status)}>{statusLabel(app.status)}</span>
       </div>
       <div className="card__role">

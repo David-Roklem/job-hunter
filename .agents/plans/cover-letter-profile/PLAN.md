@@ -1,15 +1,147 @@
 # Plan: cover-letter-profile
 
-_Stub — fill in via `soly plan cover-letter-profile` (uses ask_pro to gather goal / steps / acceptance criteria)._
+> Две связанные правки из отзывов пользователя:
+> 1. В «Отклики» ссылки на вакансии должны работать (вели на редактор письма,
+>    а не на саму вакансию).
+> 2. В текстах писем остались плейсхолдеры (`[Имя кандидата]`,
+>    `[Ссылка на Telegram / Email]`) — модель их вставляет, потому что не
+>    получает реальных данных кандидата. Нужно место в UI, где пользователь
+>    один раз настраивает свой профиль, и он подставляется в генерацию.
 
 ## Goal
 
-<!-- What does this plan deliver? 1-2 sentences. -->
+- **Внешние ссылки на вакансии**: название вакансии в карточке отклика (и на
+  странице редактирования письма) становится `<a href={vacancy.url} target="_blank">`.
+  Синий `card__role` перекрашивается в нейтральный (он не ссылка — не должен
+  выглядеть как ссылка).
+- **Профиль кандидата**: новая таблица `user_profile` (single-row, singleton) +
+  секция в `/settings` для редактирования имени/контактов/сигнатуры. Профиль
+  подставляется в промпт генерации письма → модель получает реальные данные и
+  перестает вставлять плейсхолдеры. Старые письма НЕ перетираются — профиль
+  применяется в новых генерациях и при «Регенерировать».
+
+## Decisions (зафиксированы в discuss)
+
+- **Хранение профиля — таблица в БД**, не .env и не JSON-файл. `user_profile`
+  singleton (одна строка, id=1): name, contacts (JSON: {telegram, email,
+  phone, github, website, ...}), signature_md (markdown-сигнатура письма).
+  Переживает restart, валидируется zod на границе репозитория, мигрируется
+  через drizzle-kit как обычно.
+- **Применение — только новые + регенерация.** Старые письма не трогаем
+  автоматически. Кнопка «↻ Регенерировать» (уже есть в `/applications`) при
+  вызове `generateCoverLetter` подхватит профиль. Никакой batch-обработки
+  существующих писем (рискованно, пользователь сказал «только новые + реген»).
+- **Ссылки — внешние на источник.** Название вакансии = `<a target="_blank">`
+  на `vacancy.url`. Отдельную страницу `/vacancies/:id` НЕ создаём (out-of-scope).
+- **Профиль в промпте.** `buildCoverLetterMessages` получает опциональное поле
+  `candidate_profile` ({ name, contacts, signature }). Если есть — система
+  дополнительно инструктирует модель: «используй эти контакты в подписи,
+  НЕ вставляй плейсхолдеры». Профиль берётся из repo (не из env) — для fallback
+  при отсутствии строки модель работает как раньше (старое поведение).
+- **Singleton-конвенция.** `user_profile` всегда имеет id=1; repo метод
+  `get()` возвращает профиль или null (если не задан), `upsert()` создаёт/
+  обновляет единственную строку. Миграция не создаёт строку по умолчанию —
+  пользователь заполняет через UI.
 
 ## Steps
 
-<!-- High-level breakdown. ~3-7 bullets. -->
+### 1. Схема: таблица user_profile (миграция 0005)
+
+- `app/db/schema.ts`:
+  - Новая таблица `user_profile` (singleton):
+    - `id` INTEGER PK (всегда 1 — singleton), но для простоты `primaryKey`
+      без autoIncrement (одна строка).
+    - `name` TEXT (полное имя, как представляться в письме).
+    - `contacts_json` TEXT NOT NULL DEFAULT '{}' — JSON `{telegram?, email?,
+      phone?, github?, website?, linkedin?}` (zod-схема в репозитории).
+    - `signature_md` TEXT NOT NULL DEFAULT '' — markdown-сигнатура письма
+      (опционально; если пусто — модель генерирует подпись сама из name+contacts).
+    - `...timestamps`.
+  - Без relations (singleton, ни от кого не зависит).
+  - Добавить в `schema` aggregate.
+- `npm run db:generate` → `drizzle/0005_*.sql` + snapshot.
+- `app/db/repositories/user_profile.ts` (новый):
+  - `contactsSchema` — zod-объект опциональных строковых полей.
+  - `UserProfileDTO` — Omit contacts_json + распарсенные `contacts`.
+  - `get(): UserProfileDTO | null` — SELECT WHERE id=1.
+  - `upsert(input): UserProfileDTO` — INSERT OR REPLACE id=1.
+- `app/db/repositories/index.ts`: export `userProfileRepo`.
+- Тесты: `tests/user-profile-repo.test.ts` — get→null сначала, upsert→строка,
+  upsert дважды → одна строка, валидация contacts_json через zod.
+
+### 2. Профиль в промпт генерации письма
+
+- `app/ai/prompts/coverLetter.ts`:
+  - `CoverLetterInput` += `candidateProfile?: { name; contacts; signature? }`.
+  - В `buildUserRu`/`buildUserEn`: если профиль есть — добавить блок
+    «ДАННЫЕ КАНДИДАТА ДЛЯ ПОДПИСИ» (имя, контакты, сигнатура) + явную инструкцию
+    «используй эти контакты в подписи, НЕ вставляй плейсхолдеры вида [Имя]
+    или [Ссылка]».
+  - При отсутствии профиля — старое поведение (никаких плейсхолдеров в инструкцию).
+- `app/ai/generateCoverLetter.ts`:
+  - Перед генерацией загрузить `userProfileRepo.get()`.
+  - Передать в `buildCoverLetterMessages` поле `candidateProfile`.
+- Тесты: расширить существующий `tests/generate-cover-letter.test.ts` (или
+  новый) — проверка что промпт содержит имя/контакты когда профиль задан, и
+  что инструкции против плейсхолдеров добавляются.
+
+### 3. Профиль в /settings
+
+- `app/routes/settings._index.tsx`:
+  - loader: добавить `userProfile: UserProfileDTO | null`.
+  - action: intent `save_profile` → `userProfileRepo.upsert(...)` (валидация
+    name непустая, contacts через zod).
+  - UI: новый `<fieldset>` «Профиль кандидата» сверху формы (важнее ключей).
+    Поля: Имя (text), Telegram/Email/Phone/GitHub/Website (text), Сигнатура
+    письма (textarea, markdown). Подсказка: «используется при генерации
+    сопроводительных писем; применится к новым письмам и при регенерации».
+- Тесты: `tests/settings-route.test.ts` — loader отдаёт профиль, action
+  save_profile вызывает upsert.
+
+### 4. Внешние ссылки на вакансии + правка синего текста
+
+- `app/routes/applications._index.tsx`:
+  - В `ApplicationCard`: название вакансии — `<a href={vacancy.url}
+    target="_blank" rel="noopener noreferrer">` вместо `<Link to=edit>`.
+    Ссылка на редактор письма остаётся отдельной кнопкой «Редактировать»
+    (уже есть в `card__actions`).
+  - `card__role` (компания · роль · скор) — НЕ ссылка; оставить как инфо.
+- `app/routes/applications.$id.edit.tsx`:
+  - В header карточки: название вакансии тоже `<a target="_blank">` на
+    `vacancy.url`.
+- `app/app.css`:
+  - `.applications .card__role` (или общий `.card__role`) — сменить цвет с
+    `var(--accent)` на нейтральный (`#555` или `var(--muted)`), убрать
+    визуальную путаницу «синий = кликабельный».
+  - `.card a.card__vacancy` (новый класс для внешней ссылки) — акцентный цвет,
+    подчёркивание при hover.
+- Тесты: `tests/review-ui.test.ts` (или новый) — карточка содержит `<a>` с
+  `href=vacancy.url`, `target="_blank"`.
 
 ## Acceptance
 
-<!-- How will we know the plan is done? -->
+- **`/applications`**: название вакансии в карточке — кликабельная внешняя
+  ссылка на `vacancy.url` (`target="_blank"`). Синий `card__role` заменён на
+  нейтральный цвет (не выглядит как ссылка).
+- **`/applications/:id/edit`**: название вакансии в header — внешняя ссылка.
+- **`/settings`**: новая секция «Профиль кандидата» (имя, контакты, сигнатура).
+  Сохранение пишет в `user_profile` (singleton). Старые письма НЕ меняются.
+- **Генерация писем**: после заполнения профиля новые письма (и регенерированные)
+  содержат реальные имя/контакты вместо плейсхолдеров. Промпт явно инструктирует
+  модель не использовать плейсхолдеры.
+- `npm run typecheck` чист. Автотесты зелёные (новые: user-profile-repo;
+  обновлённые: settings-route, generate-cover-letter, review-ui). Миграция
+  `0005_*.sql` сгенерирована.
+
+## Constraints / out-of-scope
+
+- **Страница `/vacancies/:id`** — не делаем (пользователь выбрал «только внешние
+  ссылки»). Просмотр вакансий внутри приложения — отдельная фаза при необходимости.
+- **Массовое обновление существующих писем** — намеренно не делаем (пользователь
+  сказал «только новые + регенерация»). Batch-замена плейсхолдеров в старых
+  письмах рискованна (модель могла вставить осмысленный контент в скобках).
+- **Профиль на несколько ролей** — singleton; если позже понадобится
+  per-resume профиль (разные контакты под разные роли), это отдельная фаза
+  (расширение до связи с resume_template).
+- **Импорт профиля из резюме** — кнопка «заполнить из резюме N» не делается;
+  пользователь вводит вручную один раз.

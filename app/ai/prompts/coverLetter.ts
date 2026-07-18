@@ -25,6 +25,16 @@ export type CoverLetterInput = {
     contentMd?: string;
   };
   locale: CoverLetterLocale;
+  /**
+   * Профиль кандидата (фаза cover-letter-profile). Если задан — модель
+   * использует реальные имя/контакты в подписи вместо плейсхолдеров.
+   * undefined = профиль не заполнен, старое поведение промпта.
+   */
+  candidateProfile?: {
+    name: string;
+    contacts: { telegram?: string; email?: string; phone?: string; github?: string; website?: string; linkedin?: string };
+    signature?: string;
+  };
 };
 
 /** Лимит на длину описания вакансии в промпте (защита от превышения контекста). */
@@ -34,9 +44,12 @@ const MAX_RESUME_CHARS = 3000;
 
 /** Собирает system + user сообщения для генерации сопроводительного. */
 export function buildCoverLetterMessages(input: CoverLetterInput): ChatMessage[] {
-  const { vacancy, resume, locale } = input;
+  const { vacancy, resume, locale, candidateProfile } = input;
   const system = SYSTEM[locale];
-  const user = locale === "ru" ? buildUserRu(vacancy, resume) : buildUserEn(vacancy, resume);
+  const user =
+    locale === "ru"
+      ? buildUserRu(vacancy, resume, candidateProfile)
+      : buildUserEn(vacancy, resume, candidateProfile);
   return [
     { role: "system", content: system },
     { role: "user", content: user },
@@ -56,6 +69,11 @@ const SYSTEM: Record<CoverLetterLocale, string> = {
     "- Язык ответа — строго русский.",
     "- НЕ выдумывай факты, которых нет в резюме.",
     "- НЕ упоминай зарплату, если она не задана.",
+    // Анти-плейсхолдеры (фаза cover-letter-profile): модель не должна вставлять
+    // скобочные заглушки в текст — контакты/имя приходят отдельным блоком.
+    "- НЕ используй плейсхолдеры в квадратных скобках ([Имя], [Ссылка], [Email] и т.п.).",
+    "- Если в данных кандидата есть имя/контакты — используй их в подписи как есть.",
+    "- Если имя/контакты не даны — закончи письмо без подписи (без [Имя]).",
   ].join("\n"),
   en: [
     "You are an experienced career advisor.",
@@ -67,12 +85,16 @@ const SYSTEM: Record<CoverLetterLocale, string> = {
     "- Response language: strictly English.",
     "- Do NOT invent facts not present in the resume.",
     "- Do NOT mention salary unless it is given.",
+    "- Do NOT use square-bracket placeholders ([Name], [Link], [Email], etc.).",
+    "- If the candidate's name/contacts are provided, use them verbatim in the sign-off.",
+    "- If name/contacts are not provided, end the letter without a sign-off (no [Name]).",
   ].join("\n"),
 };
 
 function buildUserRu(
   vacancy: CoverLetterInput["vacancy"],
   resume: CoverLetterInput["resume"],
+  candidateProfile?: CoverLetterInput["candidateProfile"],
 ): string {
   const desc = truncate(vacancy.description, MAX_DESCRIPTION_CHARS);
   const resumeExcerpt = truncate(resume.contentMd ?? "", MAX_RESUME_CHARS);
@@ -89,8 +111,32 @@ function buildUserRu(
     resume.summary ? `Краткое о себе: ${resume.summary}` : "",
     `Ключевые навыки: ${resume.skills.join(", ") || "(не указаны)"}`,
     resumeExcerpt ? `\nВыдержка из резюме:\n${resumeExcerpt}` : "",
+    candidateProfileBlockRu(candidateProfile),
     "",
     "Напиши сопроводительное письмо под эту вакансию.",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+/** Блок «ДАННЫЕ КАНДИДАТА ДЛЯ ПОДПИСИ» — реальные имя/контакты из профиля. */
+function candidateProfileBlockRu(
+  p: CoverLetterInput["candidateProfile"],
+): string {
+  if (!p) return "";
+  const contactLines: string[] = [];
+  if (p.contacts.telegram) contactLines.push(`Telegram: ${p.contacts.telegram}`);
+  if (p.contacts.email) contactLines.push(`Email: ${p.contacts.email}`);
+  if (p.contacts.phone) contactLines.push(`Телефон: ${p.contacts.phone}`);
+  if (p.contacts.github) contactLines.push(`GitHub: ${p.contacts.github}`);
+  if (p.contacts.website) contactLines.push(`Сайт: ${p.contacts.website}`);
+  if (p.contacts.linkedin) contactLines.push(`LinkedIn: ${p.contacts.linkedin}`);
+  return [
+    "",
+    "ДАННЫЕ КАНДИДАТА ДЛЯ ПОДПИСИ (используй как есть, без плейсхолдеров):",
+    `Имя: ${p.name}`,
+    contactLines.length > 0 ? `Контакты:\n${contactLines.join("\n")}` : "",
+    p.signature ? `Сигнатура письма:\n${p.signature}` : "",
   ]
     .filter(Boolean)
     .join("\n");
@@ -99,6 +145,7 @@ function buildUserRu(
 function buildUserEn(
   vacancy: CoverLetterInput["vacancy"],
   resume: CoverLetterInput["resume"],
+  candidateProfile?: CoverLetterInput["candidateProfile"],
 ): string {
   const desc = truncate(vacancy.description, MAX_DESCRIPTION_CHARS);
   const resumeExcerpt = truncate(resume.contentMd ?? "", MAX_RESUME_CHARS);
@@ -115,8 +162,32 @@ function buildUserEn(
     resume.summary ? `Summary: ${resume.summary}` : "",
     `Key skills: ${resume.skills.join(", ") || "(none)"}`,
     resumeExcerpt ? `\nResume excerpt:\n${resumeExcerpt}` : "",
+    candidateProfileBlockEn(candidateProfile),
     "",
     "Write a cover letter for this job.",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+/** Candidate profile block for the sign-off (real name/contacts). */
+function candidateProfileBlockEn(
+  p: CoverLetterInput["candidateProfile"],
+): string {
+  if (!p) return "";
+  const contactLines: string[] = [];
+  if (p.contacts.telegram) contactLines.push(`Telegram: ${p.contacts.telegram}`);
+  if (p.contacts.email) contactLines.push(`Email: ${p.contacts.email}`);
+  if (p.contacts.phone) contactLines.push(`Phone: ${p.contacts.phone}`);
+  if (p.contacts.github) contactLines.push(`GitHub: ${p.contacts.github}`);
+  if (p.contacts.website) contactLines.push(`Website: ${p.contacts.website}`);
+  if (p.contacts.linkedin) contactLines.push(`LinkedIn: ${p.contacts.linkedin}`);
+  return [
+    "",
+    "CANDIDATE DETAILS FOR SIGN-OFF (use verbatim, no placeholders):",
+    `Name: ${p.name}`,
+    contactLines.length > 0 ? `Contacts:\n${contactLines.join("\n")}` : "",
+    p.signature ? `Signature:\n${p.signature}` : "",
   ]
     .filter(Boolean)
     .join("\n");

@@ -369,6 +369,31 @@ export const scheduler_runs = sqliteTable(
 );
 
 /**
+ * Профиль кандидата (singleton, фаза cover-letter-profile).
+ *
+ * Единственная строка (id=1) с именем, контактами и сигнатурой письма.
+ * Подставляется в промпт генерации сопроводительного, чтобы модель не
+ * вставляла плейсхолдеры вида [Имя] / [Ссылка на Telegram]. Заполняется
+ * пользователем один раз через /settings.
+ *
+ * Singleton-конвенция: id всегда 1; миграция не создаёт строку по умолчанию —
+ * repo.get() возвращает null если профиль не задан (модель работает как раньше).
+ * contacts_json — zod-валидируемый объект опциональных полей (см. репозиторий).
+ */
+export const user_profile = sqliteTable("user_profile", {
+  // Singleton: всегда 1. Без autoIncrement — значение проставляет repo.upsert().
+  id: integer("id").primaryKey(),
+  // Полное имя, как представляться в письме (НЕ название шаблона резюме).
+  name: text("name").notNull(),
+  // JSON: { telegram?, email?, phone?, github?, website?, linkedin? }.
+  contacts_json: text("contacts_json").notNull().default("{}"),
+  // Markdown-сигнатура письма (опц.; пусто = модель генерирует подпись сама).
+  signature_md: text("signature_md").notNull().default(""),
+  ...timestamps,
+});
+
+
+/**
  * Элемент очереди фоновых задач (для scheduler фазы 12).
  * Планировщик берёт следующую: WHERE status='queued' AND run_after<=now
  * ORDER BY run_after — индекс (status, run_after) ускоряет выборку.
@@ -499,6 +524,7 @@ export const schema = {
   jobs,
   scheduler_runs,
   telegramChannels,
+  user_profile,
   sourcesRelations,
   companiesRelations,
   vacanciesRelations,

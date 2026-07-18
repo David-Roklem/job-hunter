@@ -14,3 +14,4 @@ export * as searchProfilesRepo from "./search_profiles";
 export * as telegramChannelsRepo from "./telegram_channels";
 export * as jobsRepo from "./jobs";
 export * as schedulerRunsRepo from "./scheduler_runs";
+export * as userProfileRepo from "./user_profile";

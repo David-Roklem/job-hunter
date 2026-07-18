@@ -3,6 +3,8 @@ import { Link } from "react-router";
 import { env } from "~/env.server";
 import { readEnvFile, writeEnvFile, type EditableKey } from "~/settings/envFile";
 import { EDITABLE_KEYS } from "~/settings/schema";
+import { userProfileRepo } from "~/db/repositories";
+import type { UserProfileDTO } from "~/db/repositories/user_profile";
 import type { Route } from "./+types/settings._index";
 
 /**
@@ -30,6 +32,8 @@ type KeyView = {
 export type LoaderData = {
   keys: KeyView[];
   envPath: string;
+  /** Профиль кандидата для генерации писем (null если не задан). */
+  userProfile: UserProfileDTO | null;
 };
 
 export async function loader(_args: Route.LoaderArgs): Promise<LoaderData> {
@@ -39,7 +43,6 @@ export async function loader(_args: Route.LoaderArgs): Promise<LoaderData> {
     const isSet = rawValue !== undefined && rawValue !== "";
     return {
       key: spec.key,
-      // Секреты не отдаём — только is_set.
       value: spec.is_secret ? null : (rawValue ?? ""),
       is_set: isSet,
       is_secret: spec.is_secret,
@@ -48,7 +51,7 @@ export async function loader(_args: Route.LoaderArgs): Promise<LoaderData> {
       hint: spec.hint,
     };
   });
-  return { keys, envPath };
+  return { keys, envPath, userProfile: userProfileRepo.get() };
 }
 
 export type ActionData = { ok: true; warning: string } | { error: string };
@@ -58,6 +61,37 @@ export async function action(
 ): Promise<ActionData | Response> {
   const formData = await args.request.formData();
   const intent = String(formData.get("intent") ?? "");
+
+  // --- save_profile: профиль кандидата (имя/контакты/сигнатура) ------------
+  // Не требует рестарта сервера (БД, а не env). Применится к новым письмам
+  // и при регенерации (см. app/ai/generateCoverLetter.ts).
+  if (intent === "save_profile") {
+    const name = String(formData.get("profile_name") ?? "").trim();
+    if (!name) {
+      throw data("Имя не может быть пустым", { status: 400 });
+    }
+    const contacts = {
+      telegram: String(formData.get("profile_telegram") ?? "").trim() || undefined,
+      email: String(formData.get("profile_email") ?? "").trim() || undefined,
+      phone: String(formData.get("profile_phone") ?? "").trim() || undefined,
+      github: String(formData.get("profile_github") ?? "").trim() || undefined,
+      website: String(formData.get("profile_website") ?? "").trim() || undefined,
+      linkedin: String(formData.get("profile_linkedin") ?? "").trim() || undefined,
+    };
+    const signature_md = String(formData.get("profile_signature") ?? "").trim();
+    try {
+      userProfileRepo.upsert({ name, contacts, signature_md });
+    } catch (err) {
+      throw data(err instanceof Error ? err.message : "profile save failed", {
+        status: 500,
+      });
+    }
+    return {
+      ok: true,
+      warning:
+        "Профиль сохранён. Применится к новым письмам и при регенерации (старые письма не меняются).",
+    };
+  }
 
   if (intent !== "save") {
     throw data(`неизвестный intent: ${intent}`, { status: 400 });
@@ -195,6 +229,111 @@ export function SettingsPage({
         </button>
       </form>
     </main>
+  );
+}
+
+/** Секция профиля кандидата (имя/контакты/сигнатура для писем). */
+function ProfileSection({ profile }: { profile: UserProfileDTO | null }) {
+  const c = profile?.contacts ?? {};
+  return (
+    <form method="post" action="/settings" className="settings-form">
+      <input type="hidden" name="intent" value="save_profile" />
+      <fieldset className="settings-form__group settings-form__group--profile">
+        <legend>Профиль кандидата</legend>
+        <p className="form__hint">
+          Эти данные подставляются в сопроводительные письма при генерации,
+          чтобы вместо <code>[Имя]</code> и <code>[Ссылка на Telegram]</code>{" "}
+          подставились реальные значения. Применится к новым письмам и при
+          регенерации — старые письма не меняются.
+        </p>
+
+        <label className="form__field">
+          <span className="form__label">Имя *</span>
+          <input
+            type="text"
+            name="profile_name"
+            defaultValue={profile?.name ?? ""}
+            placeholder="Как представляться в письме"
+            required
+          />
+        </label>
+
+        <div className="settings-form__grid">
+          <label className="form__field">
+            <span className="form__label">Telegram</span>
+            <input
+              type="text"
+              name="profile_telegram"
+              defaultValue={c.telegram ?? ""}
+              placeholder="@username"
+            />
+          </label>
+          <label className="form__field">
+            <span className="form__label">Email</span>
+            <input
+              type="email"
+              name="profile_email"
+              defaultValue={c.email ?? ""}
+              placeholder="you@example.com"
+            />
+          </label>
+          <label className="form__field">
+            <span className="form__label">Телефон</span>
+            <input
+              type="text"
+              name="profile_phone"
+              defaultValue={c.phone ?? ""}
+              placeholder="+7 ..."
+            />
+          </label>
+          <label className="form__field">
+            <span className="form__label">GitHub</span>
+            <input
+              type="text"
+              name="profile_github"
+              defaultValue={c.github ?? ""}
+              placeholder="github.com/..."
+            />
+          </label>
+          <label className="form__field">
+            <span className="form__label">Сайт / портфолио</span>
+            <input
+              type="text"
+              name="profile_website"
+              defaultValue={c.website ?? ""}
+              placeholder="https://..."
+            />
+          </label>
+          <label className="form__field">
+            <span className="form__label">LinkedIn</span>
+            <input
+              type="text"
+              name="profile_linkedin"
+              defaultValue={c.linkedin ?? ""}
+              placeholder="linkedin.com/in/..."
+            />
+          </label>
+        </div>
+
+        <label className="form__field">
+          <span className="form__label">Сигнатура письма (markdown, опц.)</span>
+          <textarea
+            name="profile_signature"
+            rows={3}
+            defaultValue={profile?.signature_md ?? ""}
+            placeholder="С уважением, Иван Иванов. Telegram: @ivan"
+          />
+          <span className="form__hint">
+            Если задано — модель использует это как готовую подпись. Пусто = модель
+            сама составит подпись из имени и контактов.
+          </span>
+        </label>
+
+        <button type="submit" className="btn btn--primary">
+          ✓ Сохранить профиль
+        </button>
+      </fieldset>
+    </form>
   );
 }
 

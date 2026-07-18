@@ -80,7 +80,16 @@ export default function Edit({
       </header>
 
       <div className="card">
-        <div className="card__title">{vacancy.title}</div>
+        <div className="card__title">
+          <a
+            href={vacancy.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="card__vacancy"
+          >
+            {vacancy.title} ↗
+          </a>
+        </div>
         <div className="card__role">
           {companyName ? `${companyName} · ` : ""}
           {resume.role}
