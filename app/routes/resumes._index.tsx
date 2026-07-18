@@ -23,9 +23,14 @@ export function ResumeList({ loaderData }: { loaderData: LoaderData }) {
     <main className="page">
       <header className="page__header">
         <h1>Резюме</h1>
-        <Link to="/resumes/new" className="btn btn--primary">
-          + Создать
-        </Link>
+        <div className="page__header-actions">
+          <Link to="/" className="btn">
+            ← На главную
+          </Link>
+          <Link to="/resumes/new" className="btn btn--primary">
+            + Создать
+          </Link>
+        </div>
       </header>
 
       {templates.length === 0 ? (

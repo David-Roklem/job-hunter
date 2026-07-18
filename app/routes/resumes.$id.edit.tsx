@@ -1,4 +1,5 @@
 import { data, redirect } from "react-router";
+import { Link } from "react-router";
 import { resumeTemplatesRepo } from "~/db/repositories";
 import { parseResumeForm } from "~/resumes/parseForm";
 import {
@@ -54,7 +55,7 @@ export async function action(args: Route.ActionArgs): Promise<ActionData | Respo
       role: String(formData.get("role") ?? ""),
       summary: String(formData.get("summary") ?? ""),
       skills: String(formData.get("skills") ?? ""),
-      experience: String(formData.get("experience") ?? ""),
+      experience: String(formData.get("experience_json") ?? ""),
       content_md: String(formData.get("content_md") ?? ""),
     };
     return { values, errors: parsed.errors };
@@ -71,6 +72,9 @@ export default function Edit({ loaderData, actionData }: Route.ComponentProps) {
     <main className="page">
       <header className="page__header">
         <h1>Редактировать: {template.name}</h1>
+        <Link to="/resumes" className="btn">
+          ← К списку
+        </Link>
       </header>
       <ResumeForm
         action={`/resumes/${template.id}/edit`}

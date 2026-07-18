@@ -1,4 +1,5 @@
 import { redirect } from "react-router";
+import { Link } from "react-router";
 import { resumeTemplatesRepo } from "~/db/repositories";
 import { parseResumeForm } from "~/resumes/parseForm";
 import {
@@ -31,7 +32,7 @@ export async function action(args: Route.ActionArgs): Promise<ActionData | Respo
       role: String(fd?.get("role") ?? ""),
       summary: String(fd?.get("summary") ?? ""),
       skills: String(fd?.get("skills") ?? ""),
-      experience: String(fd?.get("experience") ?? ""),
+      experience: String(fd?.get("experience_json") ?? ""),
       content_md: String(fd?.get("content_md") ?? ""),
     };
     return { values, errors: parsed.errors };
@@ -45,6 +46,9 @@ export function ResumeNew() {
     <main className="page">
       <header className="page__header">
         <h1>Новое резюме</h1>
+        <Link to="/resumes" className="btn">
+          ← К списку
+        </Link>
       </header>
       <ResumeForm action="/resumes/new" values={EMPTY_VALUES} />
     </main>
@@ -60,6 +64,9 @@ export default function New({ actionData }: Route.ComponentProps) {
     <main className="page">
       <header className="page__header">
         <h1>Новое резюме</h1>
+        <Link to="/resumes" className="btn">
+          ← К списку
+        </Link>
       </header>
       <ResumeForm
         action="/resumes/new"

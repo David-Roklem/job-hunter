@@ -88,6 +88,12 @@ body {
   font-size: 1.5rem;
 }
 
+.page__header-actions {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+
 .page__empty {
   color: var(--muted);
 }
@@ -332,4 +338,65 @@ body {
   background: #f3f4f6;
   padding: 0.05rem 0.3rem;
   border-radius: 0.25rem;
+}
+
+/* Редактор опыта работы (ResumeForm) */
+.experience-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.experience-editor__add {
+  align-self: flex-start;
+  border-style: dashed;
+}
+
+.experience-item {
+  position: relative;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 1rem 1rem 0.75rem;
+  margin: 0;
+  background: #fafafa;
+}
+
+.experience-item legend {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 0 0.4rem;
+}
+
+.experience-item__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.experience-item__remove {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.78rem;
+  line-height: 1.2;
+}
+
+.experience-item__current {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: #555;
+}
+
+.experience-item__current input[type="checkbox"] {
+  width: auto;
+}
+
+@media (max-width: 600px) {
+  .experience-item__row {
+    grid-template-columns: 1fr;
+  }
 }

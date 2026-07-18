@@ -23,7 +23,7 @@ export async function parseResumeForm(request: Request): Promise<ParsedForm> {
   const role = String(formData.get("role") ?? "").trim();
   const summary = String(formData.get("summary") ?? "").trim();
   const skillsRaw = String(formData.get("skills") ?? "").trim();
-  const experienceRaw = String(formData.get("experience") ?? "").trim();
+  const experienceRaw = String(formData.get("experience_json") ?? "").trim();
   const contentMd = String(formData.get("content_md") ?? "");
 
   if (!name) errors.name = "Укажите название";
@@ -38,6 +38,7 @@ export async function parseResumeForm(request: Request): Promise<ParsedForm> {
   if (!skillsResult.success) errors.skills = "Неверный формат навыков";
 
   // experience: пустая строка → [], иначе парсим JSON + zod.
+  // (UI-редактор сериализует массив в hidden-поле experience_json.)
   let experience: unknown;
   if (experienceRaw === "") {
     experience = [];
