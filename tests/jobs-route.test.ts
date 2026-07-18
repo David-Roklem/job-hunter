@@ -34,6 +34,20 @@ vi.mock("~/db", () => ({
 }));
 
 const { jobsRepo } = await import("~/db/repositories");
+
+// Мокаем processes/manager — action вызывает startManaged/stopManaged.
+const managerMocks = {
+  statusManaged: vi.fn(),
+  startManaged: vi.fn(),
+  stopManaged: vi.fn(),
+  readLogTail: vi.fn(() => ""),
+  logSize: vi.fn(() => 0),
+};
+vi.mock("~/processes/manager", () => ({
+  default: managerMocks,
+  ...managerMocks,
+}));
+
 const { loader: jobsLoader, action: jobsAction } = await import(
   "~/routes/jobs._index"
 );
@@ -52,14 +66,18 @@ function jsonForm(intent: string, id: number): Request {
 
 beforeEach(() => {
   currentDb = makeDb();
+  managerMocks.statusManaged.mockReturnValue({ running: false, logPath: "/tmp/x.log" });
+  managerMocks.startManaged.mockReset();
+  managerMocks.stopManaged.mockReset();
 });
 
 describe("jobs._index loader", () => {
-  it("возвращает пустой список + нулевые counts", async () => {
+  it("возвращает пустой список + нулевые counts + scheduler статус", async () => {
     const data = await jobsLoader({} as never);
     expect(data.jobs).toHaveLength(0);
     expect(data.counts.queued).toBe(0);
     expect(data.counts.done).toBe(0);
+    expect(data.scheduler.running).toBe(false);
   });
 
   it("возвращает список и counts с разными статусами", async () => {
@@ -126,6 +144,44 @@ describe("jobs._index action", () => {
     const j = jobsRepo.enqueue("match", { run_id: 1 });
     await expect(
       jobsAction({ request: jsonForm("bogus", j.id) } as never),
+    ).rejects.toThrow();
+  });
+});
+
+describe("jobs._index action — scheduler control", () => {
+  it("scheduler_start → startManaged вызывается, redirect на /jobs", async () => {
+    managerMocks.startManaged.mockReturnValue({
+      ok: true,
+      meta: { name: "scheduler", pid: 12345, started_at: "x", cmd: "npm", args: [] },
+    });
+    const res = await jobsAction({ request: jsonForm("scheduler_start", 0) } as never);
+    expect(managerMocks.startManaged).toHaveBeenCalledWith(
+      "scheduler",
+      "npm",
+      ["run", "scheduler"],
+    );
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("scheduler_start при уже запущенном → throw 409", async () => {
+    managerMocks.startManaged.mockReturnValue({ ok: false, error: "уже запущен" });
+    await expect(
+      jobsAction({ request: jsonForm("scheduler_start", 0) } as never),
+    ).rejects.toThrow();
+    expect(managerMocks.startManaged).toHaveBeenCalled();
+  });
+
+  it("scheduler_stop → stopManaged вызывается", async () => {
+    managerMocks.stopManaged.mockReturnValue({ ok: true, pid: 12345 });
+    const res = await jobsAction({ request: jsonForm("scheduler_stop", 0) } as never);
+    expect(managerMocks.stopManaged).toHaveBeenCalledWith("scheduler");
+    expect(res).toBeInstanceOf(Response);
+  });
+
+  it("scheduler_stop при мёртвом → throw 409", async () => {
+    managerMocks.stopManaged.mockReturnValue({ ok: false, error: "уже не работает" });
+    await expect(
+      jobsAction({ request: jsonForm("scheduler_stop", 0) } as never),
     ).rejects.toThrow();
   });
 });

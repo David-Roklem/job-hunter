@@ -6,7 +6,7 @@
  * при завершении (finish). Без FK — цикл независим от конкретной job-строки
  * (одна строка на весь прогон цепочки).
  */
-import { eq } from "drizzle-orm";
+import { desc, eq, isNotNull } from "drizzle-orm";
 import { db } from "~/db";
 import { scheduler_runs } from "~/db/schema";
 import { fromJson, toJson, type ListOptions } from "./_shared";
@@ -128,4 +128,18 @@ export function list(opts: ListOptions = {}): SchedulerRun[] {
     .limit(opts.limit ?? 50)
     .offset(opts.offset ?? 0)
     .all();
+}
+
+/**
+ * Последний завершённый цикл (finished_at IS NOT NULL), свежий сверху.
+ * Используется дашбордом для показа итогов последнего прогона.
+ */
+export function lastFinished(): SchedulerRun | undefined {
+  return db
+    .select()
+    .from(scheduler_runs)
+    .where(isNotNull(scheduler_runs.finished_at))
+    .orderBy(desc(scheduler_runs.finished_at))
+    .limit(1)
+    .get();
 }

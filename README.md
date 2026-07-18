@@ -103,7 +103,30 @@ Env (опционально):
 Apply создаётся **только** action `/applications/:id` approve — воркер его
 исполняет через `applyThrottle` (jitter + cycle-cap + daily-cap). Цикл
 `collect→match→draft` запускается энкьютом корневого `collect_vacancies`
-(внешним cron или вручную). UI очереди — `/jobs` (pause/resume/retry).
+(внешним cron, вручную или кнопкой «↻ Собрать вакансии» на главной). UI очереди —
+`/jobs` (pause/resume/retry + запуск/стоп самого воркера).
+
+## Управление через UI
+
+Фаза `ui-control` переносит базовые операции из терминала в браузер — для
+типового single-user сценария достаточно открыть `npm run dev` и работать в UI.
+
+| Поверхность             | Что доступно                                                       |
+| ----------------------- | ----------------------------------------------------------------- |
+| Дашборд `/`             | Кнопка «↻ Собрать вакансии» — запускает цикл collect→match→draft. |
+| `/jobs`                 | Запуск/стоп фонового воркера (spawn `npm run scheduler`), статус, хвост лога, pause/resume/retry задач. |
+| `/sources`              | Список источников (hh/wellfound/telegram) с реальным статусом сессии. Кнопки: добавить (seed), войти (spawn headed-браузера), собрать. |
+| `/settings`             | Редактирование `.env` (ключи API, лимиты hh, TG_SESSION) без ручной правки файла. Секреты НЕ отдаются в браузер. |
+
+**Когда всё ещё нужен терминал:**
+
+- Первый `npm install` + `npm run db:migrate` + `npm run dev`.
+- Ввод кода в `telegram:login` (интерактивный prompt — откройте лог в `data/logs/telegram-login.log`).
+- `db:generate`/`db:migrate` (миграции схемы — рискованно автоматизировать).
+- Диагностика (`hh:stealth-check`, smoke-тесты).
+
+Логи detached-процессов (scheduler, логины) пишутся в `data/logs/`, pid-файлы —
+в `data/processes/`. Они переживают restart dev-сервера.
 
 ## Структура
 

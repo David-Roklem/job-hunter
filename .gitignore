@@ -32,6 +32,8 @@ node_modules
 
 # HTML-дампы сайтов (реальный отрендеренный HTML с приватными данными сессии)
 /data/dumps/
+/data/logs/
+/data/processes/
 
 # Logs
 *.log

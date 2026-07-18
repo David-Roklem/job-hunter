@@ -1,6 +1,14 @@
 import { data, redirect } from "react-router";
 import { Link } from "react-router";
 import { jobsRepo } from "~/db/repositories";
+import {
+  statusManaged,
+  startManaged,
+  stopManaged,
+  readLogTail,
+  logSize,
+  type ProcessStatus,
+} from "~/processes/manager";
 import type { JobKind, JobStatus } from "~/db/schema";
 import type { Route } from "./+types/jobs._index";
 
@@ -17,14 +25,26 @@ import type { Route } from "./+types/jobs._index";
 
 type JobRow = ReturnType<typeof jobsRepo.list>[number];
 
+/** Имя процесса планировщика в processes-менеджере. */
+const SCHEDULER_PROC = "scheduler";
+
 export type LoaderData = {
   jobs: JobRow[];
   counts: Record<JobStatus, number>;
+  scheduler: ProcessStatus;
+  schedulerLogTail: string;
+  schedulerLogSize: number;
 };
 
 export async function loader(_args: Route.LoaderArgs): Promise<LoaderData> {
   const [jobs, counts] = [jobsRepo.list({ limit: 200 }), jobsRepo.countByStatus()];
-  return { jobs, counts };
+  return {
+    jobs,
+    counts,
+    scheduler: statusManaged(SCHEDULER_PROC),
+    schedulerLogTail: readLogTail(SCHEDULER_PROC, 50),
+    schedulerLogSize: logSize(SCHEDULER_PROC),
+  };
 }
 
 export type ActionData = { ok: true } | { error: string };
@@ -34,12 +54,24 @@ export async function action(
 ): Promise<ActionData | Response> {
   const formData = await args.request.formData();
   const intent = String(formData.get("intent") ?? "");
-  const id = Number(formData.get("id"));
 
+  // --- Управление воркером (не требует id) -------------------------------
+  if (intent === "scheduler_start") {
+    const res = startManaged(SCHEDULER_PROC, "npm", ["run", "scheduler"]);
+    if (!res.ok) throw data(res.error, { status: 409 });
+    return redirect("/jobs");
+  }
+  if (intent === "scheduler_stop") {
+    const res = stopManaged(SCHEDULER_PROC);
+    if (!res.ok) throw data(res.error, { status: 409 });
+    return redirect("/jobs");
+  }
+
+  // --- Управление конкретной задачей (требует id) -----------------------
+  const id = Number(formData.get("id"));
   if (!Number.isFinite(id)) {
     throw data("неверный id", { status: 400 });
   }
-
   const job = jobsRepo.findById(id);
   if (!job) {
     throw data(`job ${id} не найден`, { status: 404 });
@@ -103,7 +135,7 @@ function truncate(s: string | null, max = 80): string {
 }
 
 export function JobsList({ loaderData }: { loaderData: LoaderData }) {
-  const { jobs, counts } = loaderData;
+  const { jobs, counts, scheduler, schedulerLogTail, schedulerLogSize } = loaderData;
   const active = counts.queued + counts.running + counts.failed;
 
   return (
@@ -115,6 +147,53 @@ export function JobsList({ loaderData }: { loaderData: LoaderData }) {
         </Link>
       </header>
 
+      <section className="scheduler-control">
+        <div className="scheduler-control__status">
+          <h2>Фоновый воркер</h2>
+          <p>
+            Статус:{" "}
+            {scheduler.running ? (
+              <span className="badge badge--approved">
+                ▶ запущен{scheduler.pid ? ` (pid=${scheduler.pid})` : ""}
+              </span>
+            ) : (
+              <span className="badge badge--muted">⏸ остановлен</span>
+            )}
+            {scheduler.started_at && (
+              <span className="page__hint">
+                {" "}старт: {new Date(scheduler.started_at).toLocaleString("ru-RU")}
+              </span>
+            )}
+          </p>
+          <div className="scheduler-control__actions">
+            {scheduler.running ? (
+              <form method="post" style={{ display: "inline" }}>
+                <button type="submit" name="intent" value="scheduler_stop" className="btn btn--danger">
+                  ■ Остановить воркер
+                </button>
+              </form>
+            ) : (
+              <form method="post" style={{ display: "inline" }}>
+                <button type="submit" name="intent" value="scheduler_start" className="btn btn--primary">
+                  ▶ Запустить воркер
+                </button>
+              </form>
+            )}
+          </div>
+          <p className="page__hint">
+            Воркер крутит цикл <code>collect → match → generate_draft</code> и исполняет
+            <code> apply_hh</code> с jitter/лимитами. Без запущенного воркера задачи стоят в очереди.
+          </p>
+        </div>
+
+        {schedulerLogTail && (
+          <details className="scheduler-control__log">
+            <summary>Лог воркера ({schedulerLogSize} байт)</summary>
+            <pre>{schedulerLogTail}</pre>
+          </details>
+        )}
+      </section>
+
       <p className="page__hint">
         В очереди: <strong>{active}</strong> активных (queued: {counts.queued},
         running: {counts.running}, failed: {counts.failed}). Выполнено:{" "}
@@ -123,9 +202,10 @@ export function JobsList({ loaderData }: { loaderData: LoaderData }) {
 
       {jobs.length === 0 ? (
         <p className="page__empty">
-          Очередь пуста. Цикл <code>collect → match → generate_draft</code>{" "}
-          запускается энкьютом корневого <code>collect_vacancies</code>{" "}
-          (внешний cron или вручную). <code>apply_hh</code> создаётся{" "}
+          Очередь пуста. Нажмите «↻ Собрать вакансии» на{" "}
+          <Link to="/">главной</Link> — запустится цепочка{" "}
+          <code>collect → match → generate_draft</code> (нужен запущенный воркер выше).
+          <code>apply_hh</code> создаётся{" "}
           <Link to="/applications">одобрением отклика</Link>.
         </p>
       ) : (
