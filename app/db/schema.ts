@@ -304,6 +304,24 @@ export const cover_letters = sqliteTable(
   (table) => [unique("cover_letters_application_unique").on(table.application_id)],
 );
 
+/** Маппинг resume_template_id → hh resume_id (hash). Нужен фазе 11 apply-hh:
+ * форма отклика требует hh-resume-id; пользователь указывает соответствие один раз
+ * (скрипт scripts/map-hh-resumes.ts). 1:1 — один шаблон = один hh-resume. */
+export const hh_resume_mapping = sqliteTable(
+  "hh_resume_mapping",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    resume_template_id: integer("resume_template_id")
+      .notNull()
+      .references(() => resume_templates.id, { onDelete: "cascade" }),
+    hh_resume_id: text("hh_resume_id").notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    unique("hh_resume_mapping_template_unique").on(table.resume_template_id),
+  ],
+);
+
 /** Тег для фильтрации/скоринга вакансий. */
 export const tags = sqliteTable("tags", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -392,6 +410,17 @@ export const resumeTemplatesRelations = relations(
   resume_templates,
   ({ many }) => ({
     applications: many(applications),
+    hh_resume_mapping: many(hh_resume_mapping),
+  }),
+);
+
+export const hhResumeMappingRelations = relations(
+  hh_resume_mapping,
+  ({ one }) => ({
+    resume_template: one(resume_templates, {
+      fields: [hh_resume_mapping.resume_template_id],
+      references: [resume_templates.id],
+    }),
   }),
 );
 
@@ -443,6 +472,7 @@ export const schema = {
   resume_templates,
   applications,
   cover_letters,
+  hh_resume_mapping,
   tags,
   vacancy_tags,
   jobs,
@@ -451,6 +481,7 @@ export const schema = {
   companiesRelations,
   vacanciesRelations,
   resumeTemplatesRelations,
+  hhResumeMappingRelations,
   applicationsRelations,
   coverLettersRelations,
   tagsRelations,

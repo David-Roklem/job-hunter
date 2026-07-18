@@ -12,7 +12,7 @@
 | 08 | matcher | complete | Матчинг вакансия↔резюме: rule-префильтр (навыки+синонимы) → AI-скоринг z.ai (score 0–100 + rationale); applications.match_score + vacancy→matched; CLI `npm run match` + RR action `/matcher`; автотесты 190/190 ✓ 2026-07-15 (ручной smoke pending — нужен ZAI_API_KEY) |
 | 09 | draft-generator | complete | Генерация черновика отклика: сопроводительное письмо (поверх generateCoverLetter фазы 04) через батч-оркестратор generateDrafts (continue-on-error + дедуп + minScore). CLI `npm run generate-drafts` + RR action `/drafts` + smoke. Резюме = шаблон как есть, БЕЗ адаптации (опция на потом). Автотесты 205/205 ✓ 2026-07-15 (smoke валиден — z.ai/glm-5.2, осмысленное письмо в cover_letters) |
 | 10 | review-ui | complete | UI инбокс `/applications`: applications с cover_letter, действия одобрить/отклонить/регенерировать/редактировать (отд. страница). Плашки главной кликабельны. Автотесты 219/219 ✓ 2026-07-15 (ручной smoke валиден: approve/reject/save/404 на dev-сервере) |
-| 11 | apply-hh | pending | Авто-отклик на hh.ru через Playwright после подтверждения (с анти-лимитами/задержками) |
+| 11 | apply-hh | complete | Авто-отклик submitApplication: форма /applicant/vacancy_response?vacancyId=X напрямую, cover_letters.body_md → textarea, submit → status sent/failed. Таблица hh_resume_mapping + hh:map-resumes. CLI npm run hh:apply + RR action + UI кнопка. Автотесты 237/237 ✓ 2026-07-16 (ручной smoke валиден — отклик виден в /applicant/negotiations; авто-выбор резюме не доработан — submit с активным) |
 | 12 | scheduler | pending | Фоновый планировщик: регулярный сбор вакансий, очередь задач (~100/день), троттлинг, логи |
 
 > Local single-user. Sources: hh.ru (Playwright), company sites, Telegram. AI: Yandex GPT / GigaChat.
