@@ -1,8 +1,8 @@
 ---
 milestone: 0.1.0
-current_position: Фаза 10 (review-ui) ВЫПОЛНЕНА на ветке `review-ui` (ожидает merge). UI инбокс `/applications`: показывает applications с cover_letter, действия одобрить (status→approved) / отклонить (→rejected) / регенерировать (generateCoverLetter) / редактировать письмо (отдельная страница /applications/:id/edit, coverLettersRepo.updateBody → edited_at). Главная: плашки «Отклики»/«Резюме» кликабельны. Автотесты 219/219 (+14 новых), tsc чистый. Ручной smoke валиден (approve/reject/regenerate/save/404 на реальном dev-сервере). ТОЧКА ПРОДОЛЖЕНИЯ: merge review-ui → master, затем ROADMAP фаза 11 (apply-hh — авто-отклик через Playwright) или 12 (scheduler — фоновый цикл сбора+скоринга+генерации). Фаза 09 влита в master.
+current_position: Фаза 12 (scheduler) ВЫПОЛНЕНА на ветке `scheduler` (ожидает merge). Standalone tsx-воркер `npm run scheduler` крутит цикл collect→match→generate_draft через очередь jobs; apply_hh создаётся только из /applications/:id approve-action и исполняется через applyThrottle (jitter 15-60с + HH_MAX_PER_CYCLE + HH_DAILY_LIMIT). Новые таблицы: jobs (из фазы 02, активирована) + scheduler_runs (0004 миграция). jobKinds += 'match'. UI /jobs с pause/resume/retry. Автотесты 292/292 (+55 новых), tsc чистый. smoke:scheduler валиден. ТОЧКА ПРОДОЛЖЕНИЯ: merge scheduler → master. Фазы 09/10/11/camoufox-stealth влиты в master.
 camoufox-stealth ВЫПОЛНЕНА + влита в master (merge 78578a3).
-last_updated: 2026-07-15
+last_updated: 2026-07-18
 ---
 
 # Project state — job_hunter
