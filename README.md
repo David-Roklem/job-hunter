@@ -69,10 +69,41 @@ npm run dev
 | `npm run hh:seed`    | Создать source + profile для hh.ru в БД               |
 | `npm run hh:login`   | Ручной логин на hh.ru (headed Camoufox, куки персист.) |
 | `npm run hh:collect` | Сбор вакансий с hh.ru (headless)                      |
+| `npm run hh:apply`   | Авто-отклик на одобренную application (Playwright)     |
+| `npm run hh:map-resumes` | Сопоставить resume_template_id → hh resume_id       |
+| `npm run match`      | Матчинг вакансия↔резюме (rule-префильтр + AI-скор)    |
+| `npm run generate-drafts` | Генерация сопроводительных (батч)                  |
+| `npm run scheduler`  | Фоновый планировщик: collect→match→draft→apply (фаза 12) |
+| `npm run smoke:scheduler` | Smoke инвариантов очереди (БД-слой)               |
 | `npm run hh:stealth-check` | Диагностика fingerprint на bot.sannysoft.com    |
 | `npm run wellfound:seed` | Создать source + profile для Wellfound в БД        |
 | `npm run wellfound:login` | Ручной логин на Wellfound (headed Camoufox)       |
 | `npm run wellfound:collect` | Сбор вакансий с Wellfound (headless)           |
+
+## Структура
+
+### Планировщик (фаза 12)
+
+Фоновый воркер крутит цикл `collect → match → generate_draft` и исполняет
+`apply_hh` (создаётся только при одобрении отклика в `/applications`).
+
+```bash
+npm run scheduler          # standalone tsx-воркер (poll каждые 30с)
+```
+
+Env (опционально):
+
+| Переменная            | Дефолт | Описание                                       |
+| --------------------- | ------ | ---------------------------------------------- |
+| `SCHEDULER_POLL_SEC`  | 30     | Интервал poll очереди                          |
+| `HH_MAX_PER_CYCLE`    | 20     | Максимум apply за один poll воркера            |
+| `HH_DAILY_LIMIT`      | 80     | Суточный лимит apply к hh (защита от бана)     |
+| `HH_JITTER_MIN`/`MAX` | 15000/60000 | Диапазон jitter перед apply, мс           |
+
+Apply создаётся **только** action `/applications/:id` approve — воркер его
+исполняет через `applyThrottle` (jitter + cycle-cap + daily-cap). Цикл
+`collect→match→draft` запускается энкьютом корневого `collect_vacancies`
+(внешним cron или вручную). UI очереди — `/jobs` (pause/resume/retry).
 
 ## Структура
 
