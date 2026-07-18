@@ -91,6 +91,7 @@ export type AiProvider = (typeof aiProviders)[number];
 
 export const jobKinds = [
   "collect_vacancies",
+  "match",
   "generate_draft",
   "apply_hh",
 ] as const;
@@ -348,6 +349,26 @@ export const vacancy_tags = sqliteTable(
 );
 
 /**
+ * Запуск одного цикла планировщика (фаза 12).
+ *
+ * Корневой job collect_vacancies создаёт здесь строку при старте; цепочка
+ * collect → match → generate_draft при завершении пишет агрегированные
+ * stats. Без FK — цикл независим от конкретной job-строки (для аудита).
+ */
+export const scheduler_runs = sqliteTable(
+  "scheduler_runs",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    started_at: integer("started_at", { mode: "timestamp" }).notNull(),
+    finished_at: integer("finished_at", { mode: "timestamp" }),
+    // JSON-агрегат: { collected, matched, drafted, applied, errors: [...] }
+    stats_json: text("stats_json"),
+    last_error: text("last_error"),
+    ...timestamps,
+  },
+);
+
+/**
  * Элемент очереди фоновых задач (для scheduler фазы 12).
  * Планировщик берёт следующую: WHERE status='queued' AND run_after<=now
  * ORDER BY run_after — индекс (status, run_after) ускоряет выборку.
@@ -476,6 +497,7 @@ export const schema = {
   tags,
   vacancy_tags,
   jobs,
+  scheduler_runs,
   telegramChannels,
   sourcesRelations,
   companiesRelations,

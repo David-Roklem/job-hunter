@@ -12,3 +12,5 @@ export * as hhResumeMappingRepo from "./hh_resume_mapping";
 export * as coverLettersRepo from "./cover_letters";
 export * as searchProfilesRepo from "./search_profiles";
 export * as telegramChannelsRepo from "./telegram_channels";
+export * as jobsRepo from "./jobs";
+export * as schedulerRunsRepo from "./scheduler_runs";

@@ -1,6 +1,6 @@
 import { data, redirect } from "react-router";
 import { Link } from "react-router";
-import { applicationsRepo } from "~/db/repositories";
+import { applicationsRepo, jobsRepo } from "~/db/repositories";
 import { generateCoverLetter } from "~/ai/generateCoverLetter";
 import { submitApplication } from "~/hh/apply";
 import type { ApplicationStatus } from "~/db/schema";
@@ -49,6 +49,12 @@ export async function action(
   if (intent === "approve" || intent === "reject") {
     const status: ApplicationStatus = intent === "approve" ? "approved" : "rejected";
     applicationsRepo.update(id, { status });
+    // Фаза 12 scheduler: approve → энкьют apply_job (воркер отправит через
+    // throttle). apply идёт асинхронно — UI сразу редиректит, результат виден
+    // на /jobs и в application.status (sent/failed после submit).
+    if (intent === "approve") {
+      jobsRepo.enqueue("apply_hh", { application_id: id });
+    }
     return redirect("/applications");
   }
 

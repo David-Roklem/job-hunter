@@ -53,6 +53,7 @@ const {
   applicationsRepo,
   resumeTemplatesRepo,
   coverLettersRepo,
+  jobsRepo,
 } = await import("~/db/repositories");
 
 /** Создаёт полный граф. letter=true → создаёт cover_letter. */
@@ -163,19 +164,26 @@ describe("applications._index loader + action", () => {
     expect(data.applications[0].id).toBe(withLetter);
   });
 
-  it("action approve → application.status='approved'", async () => {
+  it("action approve → application.status='approved' + enqueue apply_job", async () => {
     const id = await seed({ letter: true });
     const res = await indexAction({ request: jsonForm("approve", id) } as never);
     expect(res).toBeInstanceOf(Response); // redirect
     const app = await applicationsRepo.findById(id);
     expect(app?.status).toBe("approved");
+    // Фаза 12: approve энкьютит apply_job для scheduler.
+    const queued = jobsRepo.list({ status: "queued" });
+    expect(queued).toHaveLength(1);
+    expect(queued[0].kind).toBe("apply_hh");
+    const payload = JSON.parse(queued[0].payload_json);
+    expect(payload).toEqual({ application_id: id });
   });
 
-  it("action reject → application.status='rejected'", async () => {
+  it("action reject → application.status='rejected' (БЕЗ apply_job)", async () => {
     const id = await seed({ letter: true });
     await indexAction({ request: jsonForm("reject", id) } as never);
     const app = await applicationsRepo.findById(id);
     expect(app?.status).toBe("rejected");
+    expect(jobsRepo.list({ status: "queued" })).toHaveLength(0);
   });
 
   it("action regenerate → cover_letter.body_md обновлён (AI вызван)", async () => {

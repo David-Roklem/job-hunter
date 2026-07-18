@@ -30,7 +30,9 @@
     "telegram:fix-exclude": "tsx scripts/fix-telegram-exclude.ts",
     "vacancies:list": "tsx scripts/list-vacancies.ts",
     "match": "tsx scripts/match.ts",
-    "generate-drafts": "tsx scripts/generate-drafts.ts"
+    "generate-drafts": "tsx scripts/generate-drafts.ts",
+    "scheduler": "tsx scripts/scheduler.ts",
+    "smoke:scheduler": "tsx scripts/smoke-scheduler.ts"
   },
   "dependencies": {
     "@react-router/node": "^8.1.0",
